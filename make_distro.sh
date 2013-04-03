@@ -75,534 +75,532 @@ init_commands()
 
 check_result()
 {
-        if [ "${1}" != "0" ]; then
-                print_ko
-        exit 1
-        fi
+    if [ "${1}" != "0" ]; then
+        print_ko
+    exit 1
+    fi
 }
 
 print_noln()
 {
-        print_noln_ "${*}" &
-        wait $!
+    print_noln_ "${*}" &
+    wait $!
     string="${*}"
-        str_size=${#string}
+    str_size=${#string}
 }
 
 print_noln_()
 {
-        if [ "${VERBOSE}" = "0" ]; then
-                exec 1>&6 6>&-
-        fi
-        printf "${*}"
+    if [ "${VERBOSE}" = "0" ]; then
+        exec 1>&6 6>&-
+    fi
+    printf "${*}"
 }
 
 print_out()
 {
-        print_out_ "${*}" &
-        wait $!
+    print_out_ "${*}" &
+    wait $!
 }
 
 print_out_()
 {
-        if [ "${VERBOSE}" = "0" ]; then
-                exec 1>&6 6>&-
-        fi
-        echo  "${*}"
+    if [ "${VERBOSE}" = "0" ]; then
+        exec 1>&6 6>&-
+    fi
+    echo  "${*}"
 }
 
 print_ok()
 {
     if [ "${VERBOSE}" = "0" ]; then
-            shift
-            print_ok_ &
-            wait $!
+        shift
+        print_ok_ &
+        wait $!
     fi
 }
 
 print_ko()
 {
     if [ "${VERBOSE}" = "0" ]; then
-            shift
-            print_ko_ &
-            wait $!
+        shift
+        print_ko_ &
+        wait $!
     fi
 }
 
 print_ok_()
 {
-        if [ "${VERBOSE}" = "0" ]; then
-                exec 1>&6 6>&-
-        fi
-        column=$((COLUMNS - str_size))
-        printf "%${column}s\n" "[${GREEN}OK${DEFAULT_COLOR}]"
+    if [ "${VERBOSE}" = "0" ]; then
+        exec 1>&6 6>&-
+    fi
+    column=$((COLUMNS - str_size))
+    printf "%${column}s\n" "[${GREEN}OK${DEFAULT_COLOR}]"
 }
 
 print_ko_()
 {
-        if [ "${VERBOSE}" = "0" ]; then
-                exec 1>&6 6>&-
-        fi
-        column=$((COLUMNS - str_size))
-        printf "%${column}s\n" "[${RED}KO${DEFAULT_COLOR}]"
+    if [ "${VERBOSE}" = "0" ]; then
+        exec 1>&6 6>&-
+    fi
+    column=$((COLUMNS - str_size))
+    printf "%${column}s\n" "[${RED}KO${DEFAULT_COLOR}]"
 }
 
 create_rootfs()
 {
-        print_noln "Create Rootfs ( may take a while... let's have a coffee ;) )"
+    print_noln "Create Rootfs ( may take a while... let's have a coffee ;) )"
 
-        # Build minimal rootfs
-        if [ ! -d ${TARGET_DIR} ]; then
-            logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Build minimal rootfs"
+    # Build minimal rootfs
+    if [ ! -d ${TARGET_DIR} ]; then
+        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Build minimal rootfs"
 
-                if [ "" != "${APT_REPO_SECTIONS}" ]; then
-                        components_option="--components=$(echo ${APT_REPO_SECTIONS} | tr ' ' ',')"
-                fi
-                if [ "" != "${PACKAGES_MANDATORY}" ] || [ "" != "${PACKAGES_WANTED}" ]; then
-                        include_option="--include=$(echo ${PACKAGES_WANTED} ${PACKAGES_MANDATORY} | tr ' ' ',')"
-                fi
-                if [ "" != "${PACKAGES_EXCLUDED}" ]; then
-                        exclude_option="--exclude=$(echo ${PACKAGES_EXCLUDED} | tr ' ' ',')"
-                fi
-
-            #actualvt=$(fgconsole)
-            #chvt `fgconsole --next-available` && chvt ${actualvt}
-                qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DEBIAN_VERSION} ${TARGET_DIR}
-                check_result $?
-
-                TARGET_DIR=`realpath ${TARGET_DIR}`
+        if [ "" != "${APT_REPO_SECTIONS}" ]; then
+                components_option="--components=$(echo ${APT_REPO_SECTIONS} | tr ' ' ',')"
+        fi
+        if [ "" != "${PACKAGES_MANDATORY}" ] || [ "" != "${PACKAGES_WANTED}" ]; then
+                include_option="--include=$(echo ${PACKAGES_WANTED} ${PACKAGES_MANDATORY} | tr ' ' ',')"
+        fi
+        if [ "" != "${PACKAGES_EXCLUDED}" ]; then
+                exclude_option="--exclude=$(echo ${PACKAGES_EXCLUDED} | tr ' ' ',')"
         fi
 
-        print_ok
+        #actualvt=$(fgconsole)
+        #chvt `fgconsole --next-available` && chvt ${actualvt}
+        qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DEBIAN_VERSION} ${TARGET_DIR}
+        check_result $?
 
+        TARGET_DIR=`realpath ${TARGET_DIR}`
+    fi
+
+    print_ok
 }
 
 prepare_rootfs()
 {
-        print_noln "Prepare rootfs"
+    print_noln "Prepare rootfs"
 
-        # Mount proc and sys and pts
-        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /proc"
-        ${CHROOT} mount -t proc   none /proc
+    # Mount proc and sys and pts
+    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /proc"
+    ${CHROOT} mount -t proc   none /proc
+    check_result $?
+
+    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /sys"
+    ${CHROOT} mount -t sysfs  none /sys
+    check_result $?
+
+    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /dev/pts"
+    ${CHROOT} mount -t devpts none /dev/pts
+    check_result $?
+
+    # Create /etc/mtab
+    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Create /etc/mtab"
+    grep -v rootfs ${TARGET_DIR}/proc/mounts > ${TARGET_DIR}/etc/mtab
+    check_result $?
+
+    # Allow kernel initrd creation
+    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Allow kernel initrd creation"
+    sed '/do_initrd/d' ${TARGET_DIR}/etc/kernel-img.conf > ${TARGET_DIR}/etc/kernel-img.conf
+    check_result $?
+    echo "do_initrd=yes" >> ${TARGET_DIR}/etc/kernel-img.conf
+    check_result $?
+
+    if [ "1" != ${READ_ONLY} ]; then
+        ${CHROOT} userdel ubuntu
+        ${CHROOT} useradd -d /home/ubuntu -s /bin/bash -m -p `mkpasswd ubuntu` ubuntu
         check_result $?
-
-        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /sys"
-        ${CHROOT} mount -t sysfs  none /sys
+        sed '/^ubuntu/d' ${TARGET_DIR}/etc/sudoers > ${TARGET_DIR}/etc/sudoers
         check_result $?
-
-        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /dev/pts"
-        ${CHROOT} mount -t devpts none /dev/pts
+        echo "ubuntu ALL=(ALL) ALL" >> ${TARGET_DIR}/etc/sudoers
         check_result $?
+    fi
 
-        # Create /etc/mtab
-        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Create /etc/mtab"
-        grep -v rootfs ${TARGET_DIR}/proc/mounts > ${TARGET_DIR}/etc/mtab
-        check_result $?
-
-        # Allow kernel initrd creation
-        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Allow kernel initrd creation"
-        sed '/do_initrd/d' ${TARGET_DIR}/etc/kernel-img.conf > ${TARGET_DIR}/etc/kernel-img.conf
-        check_result $?
-        echo "do_initrd=yes" >> ${TARGET_DIR}/etc/kernel-img.conf
-        check_result $?
-
-        if [ "1" != ${READ_ONLY} ]; then
-                ${CHROOT} userdel ubuntu
-                ${CHROOT} useradd -d /home/ubuntu -s /bin/bash -m -p `mkpasswd ubuntu` ubuntu
-                check_result $?
-                sed '/^ubuntu/d' ${TARGET_DIR}/etc/sudoers > ${TARGET_DIR}/etc/sudoers
-                check_result $?
-                echo "ubuntu ALL=(ALL) ALL" >> ${TARGET_DIR}/etc/sudoers
-                check_result $?
-        fi
-
-        print_ok
+    print_ok
 }
 
 clean_rootfs()
 {
-        print_noln "Clean rootfs"
+    print_noln "Clean rootfs"
 
-        # Clean apt
-        ${CHROOT} apt-get -y clean
-        check_result $?
+    # Clean apt
+    ${CHROOT} apt-get -y clean
+    check_result $?
 
-        # Delete temporary files
-        rm ${TARGET_DIR}/tmp/* -Rf
-        check_result $?
+    # Delete temporary files
+    rm ${TARGET_DIR}/tmp/* -Rf
+    check_result $?
 
-        print_ok
+    print_ok
 }
 
 apt_dpkg_work()
 {
-        print_noln "Install packages ( may take a while... let's have an other coffee ^^)"
+    print_noln "Install packages ( may take a while... let's have an other coffee ^^)"
 
-        # Set apt proxy
-        if [ "" != "${APT_HTTP_PROXY}" ]; then
-        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Set apt proxy"
-                echo "Acquire::http::proxy \"${APT_HTTP_PROXY}\";" >> ${TARGET_DIR}/etc/apt/apt.conf
-                check_result $?
-        fi
+    # Set apt proxy
+    if [ "" != "${APT_HTTP_PROXY}" ]; then
+    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Set apt proxy"
+        echo "Acquire::http::proxy \"${APT_HTTP_PROXY}\";" >> ${TARGET_DIR}/etc/apt/apt.conf
+        check_result $?
+    fi
 
     # Install packages from .deb
-        if [ "" != "${PACKAGES_DEB}" ]; then
-                logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Install other debian packages"
-                cp ${PACKAGES_DEB} ${TARGET_DIR}/
-                check_result $?
-                for package in ${PACKAGES_DEB};
-                do
-                        DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -r $(${CHROOT} dpkg-deb -W --showformat '${Package}' /$(basename ${package}))
-                        DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -i /$(basename ${package})
-                        check_result $?
-                        rm ${TARGET_DIR}/$(basename ${package})
-                        check_result $?
-                done
+    if [ "" != "${PACKAGES_DEB}" ]; then
+        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Install other debian packages"
+        cp ${PACKAGES_DEB} ${TARGET_DIR}/
+        check_result $?
+        for package in ${PACKAGES_DEB};
+        do
+            DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -r $(${CHROOT} dpkg-deb -W --showformat '${Package}' /$(basename ${package}))
+            DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -i /$(basename ${package})
+            check_result $?
+            rm ${TARGET_DIR}/$(basename ${package})
+            check_result $?
+        done
+    fi
+
+    # Add updates
+    # TODO make next step dynamic
+    #(echo "deb http://archive.ubuntu.com/ubuntu ${APT_REPO_BRANCH}-updates main restricted universe multiverse" >> ${TARGET_DIR}/etc/apt/sources.list)
+    #check_result $?
+    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} apt-get update
+    #check_result $?
+    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} apt-get upgrade -y
+    #check_result $?
+
+    # Disable apt-cdrom in initramfs since it is not an installation distrib
+    if [ "1" = ${READ_ONLY} ]; then
+        if [[ -x ${TARGET_DIR}/usr/share/initramfs-tools/scripts/casper-bottom/41apt_cdrom ]]; then 
+            chmod a-x ${TARGET_DIR}/usr/share/initramfs-tools/scripts/casper-bottom/41apt_cdrom
+            check_result $?
         fi
+    fi
 
-        # Add updates
-        # TODO make next step dynamic
-        #(echo "deb http://archive.ubuntu.com/ubuntu ${APT_REPO_BRANCH}-updates main restricted universe multiverse" >> ${TARGET_DIR}/etc/apt/sources.list)
-        #check_result $?
-        #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} apt-get update
-        #check_result $?
-        #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} apt-get upgrade -y
-        #check_result $?
+    # Update all initrd in /boot
+    ls -1 ${TARGET_DIR}/boot/vmlinuz*
+    if [ $? -eq 0 ]; then
+        ${CHROOT} update-initramfs -c -k all
+    	check_result $?
+    fi
 
-        # Disable apt-cdrom in initramfs since it is not an installation distrib
-        if [ "1" = ${READ_ONLY} ]; then
-                if [[ -x ${TARGET_DIR}/usr/share/initramfs-tools/scripts/casper-bottom/41apt_cdrom ]]; then 
-                    chmod a-x ${TARGET_DIR}/usr/share/initramfs-tools/scripts/casper-bottom/41apt_cdrom
-                    check_result $?
-                fi
-        fi
-
-        # Update all initrd in /boot
-        ls -1 ${TARGET_DIR}/boot/vmlinuz*
-	    if [ $? -eq 0 ]; then
-	        ${CHROOT} update-initramfs -c -k all
-        	check_result $?
-	    fi
-
-        print_ok
+    print_ok
 }
 
 prepare_ro_image()
 {
-        print_noln "Prepare ro image"
+    print_noln "Prepare ro image"
 
-        # Loopback
-        touch ${TARGET_DIR}_loop
-        check_result $?
+    # Loopback
+    touch ${TARGET_DIR}_loop
+    check_result $?
 
-        # Create loopback mountpoint
-        mkdir ${TARGET_DIR}_image/
-        check_result $?
+    # Create loopback mountpoint
+    mkdir ${TARGET_DIR}_image/
+    check_result $?
 
-        # Create filesystem
-        dd if=/dev/zero of=${TARGET_DIR}_loop bs=1 count=1 seek=1G
-        check_result $?
-        mkfs.ext2 -F -L rescue -m 0 ${TARGET_DIR}_loop
-        check_result $?
+    # Create filesystem
+    dd if=/dev/zero of=${TARGET_DIR}_loop bs=1 count=1 seek=1G
+    check_result $?
+    mkfs.ext2 -F -L rescue -m 0 ${TARGET_DIR}_loop
+    check_result $?
 
-        # Mount loopback
-        mount -o loop ${TARGET_DIR}_loop ${TARGET_DIR}_image
-        check_result $?
+    # Mount loopback
+    mount -o loop ${TARGET_DIR}_loop ${TARGET_DIR}_image
+    check_result $?
 
-        # Create casper needed directories
-        mkdir -p ${TARGET_DIR}_image/{casper,boot,boot/extlinux,install}
-        check_result $?
+    # Create casper needed directories
+    mkdir -p ${TARGET_DIR}_image/{casper,boot,boot/extlinux,install}
+    check_result $?
 
-        # Copy kernel and initrd for casper
-        cp ${TARGET_DIR}/boot/vmlinuz* ${TARGET_DIR}_image/casper/
-        check_result $?
-        cp ${TARGET_DIR}/boot/initrd.img* ${TARGET_DIR}_image/casper/
-        check_result $?
+    # Copy kernel and initrd for casper
+    cp ${TARGET_DIR}/boot/vmlinuz* ${TARGET_DIR}_image/casper/
+    check_result $?
+    cp ${TARGET_DIR}/boot/initrd.img* ${TARGET_DIR}_image/casper/
+    check_result $?
 
-        # Boot entries
-        cp ${CONF_DIR}/extlinux/* ${TARGET_DIR}_image/boot/extlinux/
-        check_result $?
+    # Boot entries
+    cp ${CONF_DIR}/extlinux/* ${TARGET_DIR}_image/boot/extlinux/
+    check_result $?
 
-        for kernel in ${TARGET_DIR}_image/casper/vmlinuz*;
-        do
-                kernel=$(basename ${kernel})
-                initrd=$(echo ${kernel} | sed s/vmlinuz/initrd.img/)
-                echo "LABEL ${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-                echo "  menu label ^Start with kernel ${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-                echo "  kernel /casper/${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-                if [ -f ${TARGET_DIR}_image/casper/${initrd} ]; then
-                        echo "  append boot=casper initrd=/casper/${initrd} toram quiet splash --" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-                else
-                        echo "  append boot=casper toram quiet splash --" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-                fi
-        done      
+    for kernel in ${TARGET_DIR}_image/casper/vmlinuz*;
+    do
+        kernel=$(basename ${kernel})
+        initrd=$(echo ${kernel} | sed s/vmlinuz/initrd.img/)
+        echo "LABEL ${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
+        echo "  menu label ^Start with kernel ${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
+        echo "  kernel /casper/${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
+        if [ -f ${TARGET_DIR}_image/casper/${initrd} ]; then
+                echo "  append boot=casper initrd=/casper/${initrd} toram quiet splash --" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
+        else
+                echo "  append boot=casper toram quiet splash --" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
+        fi
+    done      
 
-        # Create manifest files
-        ${CHROOT} dpkg-query -W --showformat='${Package} ${Version}\n' > ${TARGET_DIR}_image/casper/filesystem.manifest
-        check_result $?
+    # Create manifest files
+    ${CHROOT} dpkg-query -W --showformat='${Package} ${Version}\n' > ${TARGET_DIR}_image/casper/filesystem.manifest
+    check_result $?
 
-        touch ${TARGET_DIR}_image/ubuntu
+    touch ${TARGET_DIR}_image/ubuntu
 
-        mkdir ${TARGET_DIR}_image/.disk
-        #touch ${TARGET_DIR}_image/.disk/base_installable
-        #echo "full_cd/single" > ${TARGET_DIR}_image/.disk/cd_type
-        echo "${DEBIAN_VERSION}" > ${TARGET_DIR}_image/.disk/info
-        echo "http//geonobot-wiki.toile-libre.org" > ${TARGET_DIR}_image/.disk/release_notes_url
+    mkdir ${TARGET_DIR}_image/.disk
+    #touch ${TARGET_DIR}_image/.disk/base_installable
+    #echo "full_cd/single" > ${TARGET_DIR}_image/.disk/cd_type
+    echo "${DEBIAN_VERSION}" > ${TARGET_DIR}_image/.disk/info
+    echo "http//geonobot-wiki.toile-libre.org" > ${TARGET_DIR}_image/.disk/release_notes_url
 
-        # Compress rootfs
-        mksquashfs ${TARGET_DIR} ${TARGET_DIR}_image/casper/filesystem.squashfs -noappend
-        check_result $?
+    # Compress rootfs
+    mksquashfs ${TARGET_DIR} ${TARGET_DIR}_image/casper/filesystem.squashfs -noappend
+    check_result $?
 
-        # Copy README.diskdefines
-        cp ${CONF_DIR}/README.diskdefines ${TARGET_DIR}_image/
-        check_result $?
+    # Copy README.diskdefines
+    cp ${CONF_DIR}/README.diskdefines ${TARGET_DIR}_image/
+    check_result $?
 
-        # Calculate MD5 Sum
-        (cd ${TARGET_DIR}_image && find . -type f -print0 | xargs -0 md5sum | grep -v "\./md5sum.txt" > md5sum.txt)
-        check_result $?
+    # Calculate MD5 Sum
+    (cd ${TARGET_DIR}_image && find . -type f -print0 | xargs -0 md5sum | grep -v "\./md5sum.txt" > md5sum.txt)
+    check_result $?
 
-        # Install bootloader
-        (cd ${TARGET_DIR}_image && extlinux --install boot/extlinux/)
-        check_result $?
+    # Install bootloader
+    (cd ${TARGET_DIR}_image && extlinux --install boot/extlinux/)
+    check_result $?
 
-        # Umount loopback
-        umount ${TARGET_DIR}_image
-        check_result $?
+    # Umount loopback
+    umount ${TARGET_DIR}_image
+    check_result $?
 
-        # delete image mount point
-        rmdir ${TARGET_DIR}_image
-        check_result $?
+    # delete image mount point
+    rmdir ${TARGET_DIR}_image
+    check_result $?
 
-        # Check that target device is on USB bus
-        readlink -f /sys/block/$(basename ${TARGET_DEVICE}) | grep -oq usb
-        check_result $?
+    # Check that target device is on USB bus
+    readlink -f /sys/block/$(basename ${TARGET_DEVICE}) | grep -oq usb
+    check_result $?
 
-        print_ok
+    print_ok
 }
 
 burn_ro_image()
 {
-        print_noln "Burn ro image"
+    print_noln "Burn ro image"
 
-        # Compress loopback
-        gzip -c ${TARGET_DIR}_loop > geonobot.gz
-        check_result $?
+    # Compress loopback
+    gzip -c ${TARGET_DIR}_loop > geonobot.gz
+    check_result $?
 
-        # Umount all on the target device
-        umount ${TARGET_DEVICE}*
+    # Umount all on the target device
+    umount ${TARGET_DEVICE}*
 
-        # Prepare target device
-        echo ",,L,*" | sfdisk -f ${TARGET_DEVICE}
-        check_result $?
+    # Prepare target device
+    echo ",,L,*" | sfdisk -f ${TARGET_DEVICE}
+    check_result $?
 
-        # Install MBR
-        install-mbr ${TARGET_DEVICE}
-        check_result $?
+    # Install MBR
+    install-mbr ${TARGET_DEVICE}
+    check_result $?
 
-        # Uncompress filesystem in target device
-        zcat geonobot.gz > ${PARTITION_DEVICE}
-        check_result $?
+    # Uncompress filesystem in target device
+    zcat geonobot.gz > ${PARTITION_DEVICE}
+    check_result $?
 
-        print_ok
+    print_ok
 }
 
 prepare_rw_image()
 {
-        print_noln "Prepare rw image"
+    print_noln "Prepare rw image"
 
-        # Create extlinux directory
-        mkdir -p ${TARGET_DIR}/boot/extlinux
-        check_result $?
+    # Create extlinux directory
+    mkdir -p ${TARGET_DIR}/boot/extlinux
+    check_result $?
 
-        # Boot entries
-        cp -f ${CONF_DIR}/extlinux/* ${TARGET_DIR}/boot/extlinux/
-        check_result $?
-        
-        echo "${CONF_DIR}/extlinux/* ${TARGET_DIR}/boot/extlinux/"
+    # Boot entries
+    cp -f ${CONF_DIR}/extlinux/* ${TARGET_DIR}/boot/extlinux/
+    check_result $?
+    
+    echo "${CONF_DIR}/extlinux/* ${TARGET_DIR}/boot/extlinux/"
 
-        for kernel in ${TARGET_DIR}/boot/vmlinuz*;
-        do
-                kernel=$(basename ${kernel})
-                initrd=$(echo ${kernel} | sed s/vmlinuz/initrd.img/)
-                echo "LABEL ${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-                echo "  menu label ^Start with kernel ${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-                echo "  kernel /boot/${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-                if [ -f ${TARGET_DIR}/boot/${initrd} ]; then
-                        echo "  append init=/sbin/init --verbose root=/dev/disk/by-label/${PARTITION_LABEL} initrd=/boot/${initrd} console=ttyS0,115200n8 console=tty0" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-                else
-                        echo "  append root=/dev/disk/by-label/${PARTITION_LABEL} quiet splash console=ttyS0,115200n8 console=tty0" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-                fi
-        done
+    for kernel in ${TARGET_DIR}/boot/vmlinuz*;
+    do
+        kernel=$(basename ${kernel})
+        initrd=$(echo ${kernel} | sed s/vmlinuz/initrd.img/)
+        echo "LABEL ${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
+        echo "  menu label ^Start with kernel ${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
+        echo "  kernel /boot/${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
+        if [ -f ${TARGET_DIR}/boot/${initrd} ]; then
+                echo "  append init=/sbin/init --verbose root=/dev/disk/by-label/${PARTITION_LABEL} initrd=/boot/${initrd} console=ttyS0,115200n8 console=tty0" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
+        else
+                echo "  append root=/dev/disk/by-label/${PARTITION_LABEL} quiet splash console=ttyS0,115200n8 console=tty0" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
+        fi
+    done
 
-        # Check that target device is on USB bus
-        readlink -f /sys/block/$(basename ${TARGET_DEVICE}) | grep -oq -e usb -e mmc_host
-        check_result $?
+    # Check that target device is on USB bus
+    readlink -f /sys/block/$(basename ${TARGET_DEVICE}) | grep -oq -e usb -e mmc_host
+    check_result $?
 
-        print_ok
+    print_ok
 }
 
 burn_rw_image()
 {
-        print_noln "Burn rw image"
+    print_noln "Burn rw image"
 
-        mount_point=/tmp/${RANDOM}
+    mount_point=/tmp/${RANDOM}
 
-        # Umount target if already mounted
-        umount ${TARGET_DEVICE}*
-        for swap_partition in $(swapon -s | grep ${TARGET_DEVICE} | cut -d ' ' -f1);
-        do
-            swapoff ${swap_partition}
-            check_result $?
-        done
+    # Umount target if already mounted
+    umount ${TARGET_DEVICE}*
+    for swap_partition in $(swapon -s | grep ${TARGET_DEVICE} | cut -d ' ' -f1);
+    do
+        swapoff ${swap_partition}
+        check_result $?
+    done
 
-        # Prepare target device
-        (echo "0,512,S,
-        ,,L,*,
-        ;
-        ;" | sfdisk -fuM ${TARGET_DEVICE})
-        check_result $?
+    # Prepare target device
+    (echo "0,512,S,
+    ,,L,*,
+    ;
+    ;" | sfdisk -fuM ${TARGET_DEVICE})
+    check_result $?
 
-        # Install MBR
-        install-mbr ${TARGET_DEVICE}
-        check_result $?
+    # Install MBR
+    install-mbr ${TARGET_DEVICE}
+    check_result $?
 
-        # Format target
-        mkfs.ext3 -F -L ${RANDOM} -m 0 ${PARTITION_DEVICE}
-        check_result $?
-        mkswap ${SWAP_DEVICE}
-        check_result $?
+    # Format target
+    mkfs.ext3 -F -L ${RANDOM} -m 0 ${PARTITION_DEVICE}
+    check_result $?
+    mkswap ${SWAP_DEVICE}
+    check_result $?
 
-        # Set partition label for kernel mount
-        e2label ${PARTITION_DEVICE} ${PARTITION_LABEL}
-        check_result $?
+    # Set partition label for kernel mount
+    e2label ${PARTITION_DEVICE} ${PARTITION_LABEL}
+    check_result $?
 
-        # Mount target
-        mkdir -p ${mount_point}
-        check_result $?
-        mount ${PARTITION_DEVICE}  ${mount_point} -t ext3
-        check_result $?
+    # Mount target
+    mkdir -p ${mount_point}
+    check_result $?
+    mount ${PARTITION_DEVICE}  ${mount_point} -t ext3
+    check_result $?
 
-        # Copy rootfs to target
-        cp -Rf --preserve=all ${TARGET_DIR}/* ${mount_point}/
-        check_result $?
+    # Copy rootfs to target
+    cp -Rf --preserve=all ${TARGET_DIR}/* ${mount_point}/
+    check_result $?
 
-        # Install bootloader
-        (cd ${mount_point}/ && extlinux --install boot/extlinux/)
-        check_result $?
+    # Install bootloader
+    (cd ${mount_point}/ && extlinux --install boot/extlinux/)
+    check_result $?
 
-        # Umount and delete mountpoint
-        umount ${mount_point}/
-        check_result $?
-        rmdir ${mount_point}/
-        check_result $?
+    # Umount and delete mountpoint
+    umount ${mount_point}/
+    check_result $?
+    rmdir ${mount_point}/
+    check_result $?
 
-        print_ok
+    print_ok
 }
 
 umount_all_in_rootfs()
 {
-        print_noln "Umount all in rootfs"
+    print_noln "Umount all in rootfs"
 
-        # Umount all filesystems mounted in the chroot environment
-        if [ "" != "$(${CHROOT} mount | grep /dev/pts)" ]; then
-                umount ${TARGET_DIR}/dev/pts
-                #check_result $?
-        fi
-        if [ "" != "$(${CHROOT} mount | grep /proc)" ]; then
-                umount ${TARGET_DIR}/proc
-                #check_result $?
-        fi
-        if [ "" != "$(${CHROOT} mount | grep /sys)" ]; then
-                umount ${TARGET_DIR}/sys
-                #check_result $?
-        fi
+    # Umount all filesystems mounted in the chroot environment
+    if [ "" != "$(${CHROOT} mount | grep /dev/pts)" ]; then
+        umount ${TARGET_DIR}/dev/pts
+    fi
+    if [ "" != "$(${CHROOT} mount | grep /proc)" ]; then
+        umount ${TARGET_DIR}/proc
+    fi
+    if [ "" != "$(${CHROOT} mount | grep /sys)" ]; then
+        umount ${TARGET_DIR}/sys
+    fi
 
-        echo "" > ${TARGET_DIR}/etc/mtab
+    echo "" > ${TARGET_DIR}/etc/mtab
 
-        print_ok
+    print_ok
 }
 
 umount_image()
 {
-        print_noln "Umount image directory"
+    print_noln "Umount image directory"
 
-        if mount | grep ${TARGET_DIR}_image > /dev/null; then
-            umount ${TARGET_DIR}_image
-            check_result $?
-        fi
+    if mount | grep ${TARGET_DIR}_image > /dev/null; then
+        umount ${TARGET_DIR}_image
+        check_result $?
+    fi
 
-        print_ok
+    print_ok
 }
 
 generate_distro()
 {
-        # Create rootfs
-        create_rootfs
+    # Create rootfs
+    create_rootfs
 
-        # Prepare rootfs
-        prepare_rootfs
 
-        # Configure apt and finish packages install
-        apt_dpkg_work
 
-        # Clean chroot environment
-        clean_rootfs
-     
-        # Umount all
-        umount_all_in_rootfs
+    # Prepare rootfs
+    prepare_rootfs
 
-        if [ "${ONLY_ROOTFS}" == 0 ]; then
-            if [ "1" = ${READ_ONLY} ]; then
-                    # Prepare image
-                    prepare_ro_image
-        
-                # Burn image
-                burn_ro_image
-            else
-                    # Prepare image
-                    prepare_rw_image
+    # Configure apt and finish packages install
+    apt_dpkg_work
 
-                    # Burn image
-                    burn_rw_image
-            fi
+    # Clean chroot environment
+    clean_rootfs
+ 
+    # Umount all
+    umount_all_in_rootfs
+
+    if [ "${ONLY_ROOTFS}" == 0 ]; then
+        if [ "1" = ${READ_ONLY} ]; then
+            # Prepare image
+            prepare_ro_image
+
+            # Burn image
+            burn_ro_image
+        else
+            # Prepare image
+            prepare_rw_image
+
+            # Burn image
+            burn_rw_image
         fi
+    fi
 }
 
 uninstall()
 {
-        if [[ -d ${TARGET_DIR} ]]; then
-                TARGET_DIR=`realpath ${TARGET_DIR}`
-                # Umount all
-                umount_all_in_rootfs
-        
-                umount_image
-        
-                # Delete all
-                print_noln "Delete ${TARGET_DIR}"
-                rm ${TARGET_DIR} -Rf
-                check_result $?
-                print_ok
-        fi
-        if [[ -d ${TARGET_DIR}_image ]]; then
-                print_noln "Delete ${TARGET_DIR}_image"
-                rm ${TARGET_DIR}_image -Rf
-                check_result $?
-                print_ok
-        fi
-        if [[ -f ${TARGET_DIR} ]]; then
-                print_noln "Delete ${TARGET_DIR}_loop"
-                rm ${TARGET_DIR}_loop
-                check_result $?
-                print_ok
-        fi
-        
-        print_noln "Uninstall"
+    if [[ -d ${TARGET_DIR} ]]; then
+        TARGET_DIR=`realpath ${TARGET_DIR}`
+        # Umount all
+        umount_all_in_rootfs
+    
+        umount_image
+    
+        # Delete all
+        print_noln "Delete ${TARGET_DIR}"
+        rm ${TARGET_DIR} -Rf
+        check_result $?
         print_ok
+    fi
+    if [[ -d ${TARGET_DIR}_image ]]; then
+        print_noln "Delete ${TARGET_DIR}_image"
+        rm ${TARGET_DIR}_image -Rf
+        check_result $?
+        print_ok
+    fi
+    if [[ -f ${TARGET_DIR} ]]; then
+        print_noln "Delete ${TARGET_DIR}_loop"
+        rm ${TARGET_DIR}_loop
+        check_result $?
+        print_ok
+    fi
+    
+    print_noln "Uninstall"
+    print_ok
 }
 
 print_usage()
 {
-        echo "This script build custom Ubuntu/Debian distributions.
+    echo "This script build custom Ubuntu/Debian distributions.
 
 ./$(basename ${0}) [-a <action>] [OPTIONS]
 
@@ -737,15 +735,15 @@ init_commands
 
 # Determines apt repository according to distro
 case ${DEBIAN_DISTRO} in
-"ubuntu")
+    "ubuntu")
         if [ "1" = ${READ_ONLY} ]; then
                 PACKAGES_MANDATORY="casper discover laptop-detect"
         fi
         ;;
-"debian")
+    "debian")
         PACKAGES_MANDATORY="initramfs-tools"
         ;;
-*)
+    *)
         echo "Error : Bad Debian-like distro..."
         exit 1
         ;;
@@ -768,25 +766,25 @@ fi
 
 # If verbose, display command output
 if [ "${VERBOSE}" = "0" ]; then
-        exec 6>&1
-        exec 7>&2
+    exec 6>&1
+    exec 7>&2
 
-        exec 1>$(dirname ${TARGET_DIR})/$(basename ${TARGET_DIR}).log
-        exec 2>&1
+    exec 1>$(dirname ${TARGET_DIR})/$(basename ${TARGET_DIR}).log
+    exec 2>&1
 fi
 
 print_out "Starting. Please wait..."
 
 # Check action to perform
 if [ "uninstall" = "${action}" ]; then
-        uninstall
-        exit 0
+    uninstall
+    exit 0
 elif [ "install" = "${action}" ]; then
-        trap    "umount_all_in_rootfs;umount_image"        EXIT
-        #uninstall
-        generate_distro
-        exit 0
+    trap    "umount_all_in_rootfs;umount_image"        EXIT
+    #uninstall
+    generate_distro
+    exit 0
 else
-        echo "Wrong action or bad one. Check -a option. Exiting." > /dev/stderr
+    echo "Wrong action or bad one. Check -a option. Exiting." > /dev/stderr
 fi
 
