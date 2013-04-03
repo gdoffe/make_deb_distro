@@ -33,7 +33,7 @@ init()
     TARGET_DIR="${PWD}/../targetdir"
     
     # Target architecture
-    ARCH=$(arch)
+    ARCH=$(dpkg --print-architecture)
     
     # Debian-like distribution
     DEBIAN_DISTRO=$(lsb_release -i | cut -d ':' -f2 | tr -d '\t' | tr 'A-Z' 'a-z')
