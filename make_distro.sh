@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#    Copyright (C) 2011 Gilles DOFFE
+#    Copyright (C) 2013 Gilles DOFFE
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -535,13 +535,18 @@ generate_distro()
     # Create rootfs
     create_rootfs
 
-
-
     # Prepare rootfs
     prepare_rootfs
 
     # Configure apt and finish packages install
     apt_dpkg_work
+
+    if [ ${SCRIPT_ROOTFS} != "" ]; then
+        print_noln "Execute '${SCRIPT_ROOTFS}' script"
+        sh ${SCRIPT_ROOTFS}
+        check_result $?
+        print_ok
+    fi
 
     # Clean chroot environment
     clean_rootfs
@@ -613,6 +618,7 @@ Options:
         (-o|--deb-packages)      \"<deb_packages>\"       Local .deb packages. List must be quoted.
         (-p|--packages)          \"<packages>\"           Distro packages to use. List must be quoted.
         (-r|--read-only)                                Read only distro
+        (-s|--script)            <script>               Launch your script after rootfs is created and all package installed.
         (-t|--target)            <target>               Target achitecture (same as host by default)
         (-u|--excluded-packages) \"<unwanted_packages>\"  Packages to exclude from bootstrap process. List must be quoted.
         (-v|--verbose)                                  Verbose mode
@@ -621,7 +627,7 @@ Options:
 
 parse_options()
 {
-    ARGS=$(getopt -o "a:b:d:fhk:o:p:ru:t:vw" -l "action:,deb-packages:,device:,excluded-packages:,help,only-rootfs,packages:,read-only,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
+    ARGS=$(getopt -o "a:b:d:fhk:o:p:rs:t:u:vw" -l "action:,deb-packages:,device:,excluded-packages:,help,only-rootfs,packages:,read-only,script:,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
 
     #Bad arguments
     if [ $? -ne 0 ]; then
@@ -697,8 +703,13 @@ parse_options()
                 shift
                 ;;
 
+            -s|--script)
+                SCRIPT_ROOTFS=$2
+                shift 2
+                ;;
+
             -t|--target)
-                ARCH="$2"
+                ARCH=$2
                 shift 2
                 ;;
 
