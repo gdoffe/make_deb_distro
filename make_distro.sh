@@ -30,7 +30,10 @@ init()
     ONLY_ROOTFS=0
 
     # Target roots filesystem
-    TARGET_DIR="${PWD}/../targetdir"
+    export TARGET_DIR="${PWD}/../targetdir"
+
+    # Target device
+    export TARGET_DEVICE=/dev/null
     
     # Target architecture
     ARCH=$(dpkg --print-architecture)
