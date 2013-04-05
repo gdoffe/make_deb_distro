@@ -33,7 +33,7 @@ init()
     export TARGET_DIR="${PWD}/../targetdir"
 
     # Target device
-    export TARGET_DEVICE=/dev/null
+    export TARGET_DEVICE=
     
     # Target architecture
     ARCH=$(dpkg --print-architecture)
@@ -86,10 +86,12 @@ check_result()
 
 print_noln()
 {
-    print_noln_ "${*}" &
-    wait $!
-    string="${*}"
-    str_size=${#string}
+    if [ "${VERBOSE}" = "0" ]; then
+        print_noln_ "${*}" &
+        wait $!
+        string="${*}"
+        str_size=${#string}
+    fi
 }
 
 print_noln_()
@@ -795,7 +797,6 @@ if [ "uninstall" = "${action}" ]; then
     exit 0
 elif [ "install" = "${action}" ]; then
     trap    "umount_all_in_rootfs;umount_image"        EXIT
-    #uninstall
     generate_distro
     exit 0
 else
