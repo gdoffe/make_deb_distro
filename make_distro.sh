@@ -17,6 +17,9 @@
 
 # Depends on realpath whois qemu-kvm-extras-static squashfs-tools extlinux mbr
 
+# Include generic functions
+. include/functions.sh
+
 # Init all script variables
 init()
 {
@@ -74,82 +77,6 @@ init()
 init_commands()
 {
     CHROOT="chroot ${TARGET_DIR}"
-}
-
-check_result()
-{
-    if [ "${1}" != "0" ]; then
-        print_ko
-    exit 1
-    fi
-}
-
-print_noln()
-{
-    if [ "${VERBOSE}" = "0" ]; then
-        print_noln_ "${*}" &
-        wait $!
-        string="${*}"
-        str_size=${#string}
-    fi
-}
-
-print_noln_()
-{
-    if [ "${VERBOSE}" = "0" ]; then
-        exec 1>&6 6>&-
-    fi
-    printf "${*}"
-}
-
-print_out()
-{
-    print_out_ "${*}" &
-    wait $!
-}
-
-print_out_()
-{
-    if [ "${VERBOSE}" = "0" ]; then
-        exec 1>&6 6>&-
-    fi
-    echo  "${*}"
-}
-
-print_ok()
-{
-    if [ "${VERBOSE}" = "0" ]; then
-        shift
-        print_ok_ &
-        wait $!
-    fi
-}
-
-print_ko()
-{
-    if [ "${VERBOSE}" = "0" ]; then
-        shift
-        print_ko_ &
-        wait $!
-    fi
-}
-
-print_ok_()
-{
-    if [ "${VERBOSE}" = "0" ]; then
-        exec 1>&6 6>&-
-    fi
-    column=$((COLUMNS - str_size))
-    printf "%${column}s\n" "[${GREEN}OK${DEFAULT_COLOR}]"
-}
-
-print_ko_()
-{
-    if [ "${VERBOSE}" = "0" ]; then
-        exec 1>&6 6>&-
-    fi
-    column=$((COLUMNS - str_size))
-    printf "%${column}s\n" "[${RED}KO${DEFAULT_COLOR}]"
 }
 
 create_rootfs()
@@ -348,8 +275,6 @@ prepare_ro_image()
     touch ${TARGET_DIR}_image/ubuntu
 
     mkdir ${TARGET_DIR}_image/.disk
-    #touch ${TARGET_DIR}_image/.disk/base_installable
-    #echo "full_cd/single" > ${TARGET_DIR}_image/.disk/cd_type
     echo "${DEBIAN_VERSION}" > ${TARGET_DIR}_image/.disk/info
     echo "http//geonobot-wiki.toile-libre.org" > ${TARGET_DIR}_image/.disk/release_notes_url
 
@@ -392,19 +317,8 @@ burn_ro_image()
     gzip -c ${TARGET_DIR}_loop > geonobot.gz
     check_result $?
 
-    # Umount all on the target device
-    umount ${TARGET_DEVICE}*
-
-    # Prepare target device
-    echo ",,L,*" | sfdisk -f ${TARGET_DEVICE}
-    check_result $?
-
-    # Install MBR
-    install-mbr ${TARGET_DEVICE}
-    check_result $?
-
     # Uncompress filesystem in target device
-    zcat geonobot.gz > ${PARTITION_DEVICE}
+    zcat geonobot.gz > ${ROOTFS_DEVICE}
     check_result $?
 
     print_ok
@@ -451,39 +365,20 @@ burn_rw_image()
 
     mount_point=/tmp/${RANDOM}
 
-    # Umount target if already mounted
-    umount ${TARGET_DEVICE}*
-    for swap_partition in $(swapon -s | grep ${TARGET_DEVICE} | cut -d ' ' -f1);
-    do
-        swapoff ${swap_partition}
-        check_result $?
-    done
-
-    # Prepare target device
-    (echo "0,512,S,
-    ,,L,*,
-    ;
-    ;" | sfdisk -fuM ${TARGET_DEVICE})
-    check_result $?
-
-    # Install MBR
-    install-mbr ${TARGET_DEVICE}
-    check_result $?
-
     # Format target
-    mkfs.ext3 -F -L ${RANDOM} -m 0 ${PARTITION_DEVICE}
+    mkfs.ext3 -F -L ${RANDOM} -m 0 ${ROOTFS_DEVICE}
     check_result $?
     mkswap ${SWAP_DEVICE}
     check_result $?
 
     # Set partition label for kernel mount
-    e2label ${PARTITION_DEVICE} ${PARTITION_LABEL}
+    e2label ${ROOTFS_DEVICE} ${PARTITION_LABEL}
     check_result $?
 
     # Mount target
     mkdir -p ${mount_point}
     check_result $?
-    mount ${PARTITION_DEVICE}  ${mount_point} -t ext3
+    mount ${ROOTFS_DEVICE}  ${mount_point} -t ext3
     check_result $?
 
     # Copy rootfs to target
@@ -546,7 +441,7 @@ generate_distro()
     # Configure apt and finish packages install
     apt_dpkg_work
 
-    if [ ${SCRIPT_ROOTFS} != "" ]; then
+    if [ "${SCRIPT_ROOTFS}" != "" ]; then
         print_noln "Execute '${SCRIPT_ROOTFS}' script"
         sh ${SCRIPT_ROOTFS}
         check_result $?
@@ -564,11 +459,17 @@ generate_distro()
             # Prepare image
             prepare_ro_image
 
+            # Prepare target device
+            prepare_target
+
             # Burn image
             burn_ro_image
         else
             # Prepare image
             prepare_rw_image
+
+            # Prepare target device
+            prepare_target
 
             # Burn image
             burn_rw_image
@@ -773,11 +674,13 @@ fi
 
 # Select partition
 if [ "$(echo ${TARGET_DEVICE} | grep '.*[0-9]$')" != "" ]; then
-    SWAP_DEVICE=${TARGET_DEVICE}p1
-    PARTITION_DEVICE=${TARGET_DEVICE}p2
+    VFAT_DEVICE=${TARGET_DEVICE}p1
+    SWAP_DEVICE=${TARGET_DEVICE}p2
+    ROOTFS_DEVICE=${TARGET_DEVICE}p3
 else
-    SWAP_DEVICE=${TARGET_DEVICE}1
-    PARTITION_DEVICE=${TARGET_DEVICE}2
+    VFAT_DEVICE=${TARGET_DEVICE}1
+    SWAP_DEVICE=${TARGET_DEVICE}2
+    ROOTFS_DEVICE=${TARGET_DEVICE}3
 fi
 
 # If verbose, display command output

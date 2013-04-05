@@ -26,3 +26,6 @@
 # TARGET_DEVICE : Device where rootfs and bootloader will be burned
 # 
 ###########################################################################
+
+# Import generic functions.
+. <MAKE_DEB_DISTRO_PATH>/include/functions.sh
