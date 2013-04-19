@@ -703,6 +703,6 @@ elif [ "install" = "${action}" ]; then
     generate_distro
     exit 0
 else
-    echo "Wrong action or bad one. Check -a option. Exiting." > /dev/stderr
+    print_out "Wrong action or bad one. Check -a option. Exiting."
 fi
 
