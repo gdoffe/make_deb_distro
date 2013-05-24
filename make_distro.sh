@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Depends on realpath whois qemu-kvm-extras-static squashfs-tools extlinux mbr
+# Depends on realpath whois qemu-user-static squashfs-tools extlinux mbr debootstrap
 
 # Include generic functions
 . include/functions.sh
@@ -42,10 +42,10 @@ init()
     ARCH=$(dpkg --print-architecture)
     
     # Debian-like distribution
-    DEBIAN_DISTRO=$(lsb_release -i | cut -d ':' -f2 | tr -d '\t' | tr 'A-Z' 'a-z')
+    DISTRO_NAME=$(lsb_release -i | cut -d ':' -f2 | tr -d '\t' | tr 'A-Z' 'a-z')
     
     # Debian-like version
-    DEBIAN_VERSION=$(lsb_release -c | cut -d ':' -f2 | tr -d '\t')
+    DISTRO_VERSION=$(lsb_release -c | cut -d ':' -f2 | tr -d '\t')
     
     # Configuration directory
     CONF_DIR=./make_distro.d
@@ -58,7 +58,7 @@ init()
     # HTTP proxy for apt
     #APT_HTTP_PROXY="http://<USERNAME>:<PASSWORD>@<IP>:<PORT>/"
     # apt repo branch
-    APT_REPO_BRANCH=${DEBIAN_VERSION}
+    APT_REPO_BRANCH=${DISTRO_VERSION}
     
     APT_REPO_SECTIONS="main restricted universe multiverse"
     
@@ -99,7 +99,7 @@ create_rootfs()
 
         #actualvt=$(fgconsole)
         #chvt `fgconsole --next-available` && chvt ${actualvt}
-        qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DEBIAN_VERSION} ${TARGET_DIR}
+        qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DISTRO_VERSION} ${TARGET_DIR}
         check_result $?
 
         TARGET_DIR=`realpath ${TARGET_DIR}`
@@ -212,7 +212,7 @@ apt_dpkg_work()
     ls -1 ${TARGET_DIR}/boot/vmlinuz*
     if [ $? -eq 0 ]; then
         ${CHROOT} update-initramfs -c -k all
-    	check_result $?
+        check_result $?
     fi
 
     print_ok
@@ -275,7 +275,7 @@ prepare_ro_image()
     touch ${TARGET_DIR}_image/ubuntu
 
     mkdir ${TARGET_DIR}_image/.disk
-    echo "${DEBIAN_VERSION}" > ${TARGET_DIR}_image/.disk/info
+    echo "${DISTRO_VERSION}" > ${TARGET_DIR}_image/.disk/info
     echo "http//geonobot-wiki.toile-libre.org" > ${TARGET_DIR}_image/.disk/release_notes_url
 
     # Compress rootfs
@@ -365,12 +365,6 @@ burn_rw_image()
 
     mount_point=/tmp/${RANDOM}
 
-    # Format target
-    mkfs.ext3 -F -L ${RANDOM} -m 0 ${ROOTFS_DEVICE}
-    check_result $?
-    mkswap ${SWAP_DEVICE}
-    check_result $?
-
     # Set partition label for kernel mount
     e2label ${ROOTFS_DEVICE} ${PARTITION_LABEL}
     check_result $?
@@ -378,7 +372,7 @@ burn_rw_image()
     # Mount target
     mkdir -p ${mount_point}
     check_result $?
-    mount ${ROOTFS_DEVICE}  ${mount_point} -t ext3
+    mount ${ROOTFS_DEVICE}  ${mount_point}
     check_result $?
 
     # Copy rootfs to target
@@ -401,6 +395,8 @@ burn_rw_image()
 umount_all_in_rootfs()
 {
     print_noln "Umount all in rootfs"
+
+    sync
 
     # Umount all filesystems mounted in the chroot environment
     if [ "" != "$(${CHROOT} mount | grep /dev/pts)" ]; then
@@ -441,6 +437,7 @@ generate_distro()
     # Configure apt and finish packages install
     apt_dpkg_work
 
+    # Execute script after rootfs is created
     if [ "${SCRIPT_ROOTFS}" != "" ]; then
         print_noln "Execute '${SCRIPT_ROOTFS}' script"
         sh ${SCRIPT_ROOTFS}
@@ -468,11 +465,27 @@ generate_distro()
             # Prepare image
             prepare_rw_image
 
-            # Prepare target device
-            prepare_target
+            # Execute script to prepare target
+            if [ "${SCRIPT_PREPARE}" != "" ]; then
+                print_noln "Execute '${SCRIPT_PREPARE}' script"
+                bash ${SCRIPT_PREPARE}
+                check_result $?
+                print_ok
+            else
+                # Prepare target device
+                prepare_target
+            fi
 
             # Burn image
             burn_rw_image
+
+            # Execute script after image is burned
+            if [ "${SCRIPT_BURN}" != "" ]; then
+                print_noln "Execute '${SCRIPT_BURN}' script"
+                bash ${SCRIPT_BURN}
+                check_result $?
+                print_ok
+            fi
         fi
     fi
 }
@@ -516,24 +529,27 @@ print_usage()
 ./$(basename ${0}) [-a <action>] [OPTIONS]
 
 Options:
-        (-a|--action)            <action>               Action : "install" or "uninstall".
-        (-b|--target-device)     <device>               Target device
-        (-f|--only-rootfs)                              Build rootfs only
-        (-h|--help)                                     Display this help message
-        (-d|--target-dir)        <path>                 Bootstrap path
-        (-o|--deb-packages)      \"<deb_packages>\"       Local .deb packages. List must be quoted.
-        (-p|--packages)          \"<packages>\"           Distro packages to use. List must be quoted.
-        (-r|--read-only)                                Read only distro
-        (-s|--script)            <script>               Launch your script after rootfs is created and all package installed.
-        (-t|--target)            <target>               Target achitecture (same as host by default)
-        (-u|--excluded-packages) \"<unwanted_packages>\"  Packages to exclude from bootstrap process. List must be quoted.
-        (-v|--verbose)                                  Verbose mode
+        (-a|--action)            <action>                Action : "install" or "uninstall".
+        (-b|--target-device)     <device>                Target device
+        (-d|--target-dir)        <path>                  Bootstrap path
+        (-e|--excluded-packages) \"<excluded-packages>\" Packages to exclude from bootstrap process. List must be quoted.
+        (-f|--only-rootfs)                               Build rootfs only
+        (-h|--help)                                      Display this help message
+        (-n|--distro-version)    <distro-name>           Debian/Ubuntu distribution name (same as host by default).
+        (-o|--deb-packages)      \"<deb-packages>\"      Local .deb packages. List must be quoted.
+        (-p|--packages)          \"<packages>\"          Distro packages to use. List must be quoted.
+        (-r|--read-only)                                 Read only distro
+        (--script-rootfs)        <script>                Launch your script after rootfs is created and all package installed.
+        (--script-prepare)       <script>                Launch your script to prepare the target device.
+        (--script-burn)          <script>                Launch your script after rootfs is burned on target device.
+        (-t|--target)            <target>                Target achitecture (same as host by default).
+        (-v|--verbose)                                   Verbose mode
         "
 }
 
 parse_options()
 {
-    ARGS=$(getopt -o "a:b:d:fhk:o:p:rs:t:u:vw" -l "action:,deb-packages:,device:,excluded-packages:,help,only-rootfs,packages:,read-only,script:,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
+    ARGS=$(getopt -o "a:b:d:e:fhk:n:o:p:rt:u:vw" -l "action:,deb-packages:,device:,distro-name:,excluded-packages:,help,only-rootfs,packages:,read-only,script-prepare:,script-rootfs:,script-burn:,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
 
     #Bad arguments
     if [ $? -ne 0 ]; then
@@ -584,6 +600,11 @@ parse_options()
                 shift
                 ;;
 
+            -n|--distro-version)
+                DISTRO_VERSION=$2
+                shift 2
+                ;;
+
             -o|--deb-packages)
                 echo $2 | grep "^-" > /dev/null
                 while [ $? -ne 0 ]; do
@@ -609,8 +630,18 @@ parse_options()
                 shift
                 ;;
 
-            -s|--script)
+            --script-rootfs)
                 SCRIPT_ROOTFS=$2
+                shift 2
+                ;;
+
+            --script-prepare)
+                SCRIPT_PREPARE=$2
+                shift 2
+                ;;
+
+            --script-burn)
+                SCRIPT_BURN=$2
                 shift 2
                 ;;
 
@@ -651,7 +682,7 @@ parse_options "${@}"
 init_commands
 
 # Determines apt repository according to distro
-case ${DEBIAN_DISTRO} in
+case ${DISTRO_NAME} in
     "ubuntu")
         if [ "1" = ${READ_ONLY} ]; then
                 PACKAGES_MANDATORY="casper discover laptop-detect"
@@ -674,13 +705,11 @@ fi
 
 # Select partition
 if [ "$(echo ${TARGET_DEVICE} | grep '.*[0-9]$')" != "" ]; then
-    VFAT_DEVICE=${TARGET_DEVICE}p1
-    SWAP_DEVICE=${TARGET_DEVICE}p2
-    ROOTFS_DEVICE=${TARGET_DEVICE}p3
+    export VFAT_DEVICE=${TARGET_DEVICE}p1
+    export ROOTFS_DEVICE=${TARGET_DEVICE}p2
 else
-    VFAT_DEVICE=${TARGET_DEVICE}1
-    SWAP_DEVICE=${TARGET_DEVICE}2
-    ROOTFS_DEVICE=${TARGET_DEVICE}3
+    export VFAT_DEVICE=${TARGET_DEVICE}1
+    export ROOTFS_DEVICE=${TARGET_DEVICE}2
 fi
 
 # If verbose, display command output
@@ -693,6 +722,7 @@ if [ "${VERBOSE}" = "0" ]; then
 fi
 
 print_out "Starting. Please wait..."
+echo $RANDOM
 
 # Check action to perform
 if [ "uninstall" = "${action}" ]; then

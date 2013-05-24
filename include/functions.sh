@@ -99,22 +99,28 @@ prepare_target()
 
     # Umount target if already mounted
     umount ${TARGET_DEVICE}*
-    for swap_partition in $(swapon -s | grep ${TARGET_DEVICE} | cut -d ' ' -f1);
-    do
-        swapoff ${swap_partition}
-        check_result $?
-    done
+
+    # Erase partition table
+    dd if=/dev/zero of=${TARGET_DEVICE} bs=1M count=1
 
     # Prepare target device
-    (echo "0,64,0b,*
-    0,512,S,
+    (echo "0,64,0b,
     ,,L,*,
     ;
-    ;" | sfdisk -fuM ${TARGET_DEVICE})
+    ;" | sfdisk -fuM --no-reread ${TARGET_DEVICE})
+    check_result $?
+
+    partprobe ${TARGET_DEVICE}
     check_result $?
 
     # Install MBR
     install-mbr ${TARGET_DEVICE}
+    check_result $?
+
+    # Format target
+    mkfs.vfat $VFAT_DEVICE
+    check_result $?
+    mkfs.ext4 -F -L ${RANDOM} -m 0 ${ROOTFS_DEVICE}
     check_result $?
 
     print_ok
