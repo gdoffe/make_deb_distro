@@ -40,6 +40,7 @@ init()
     
     # Target architecture
     ARCH=$(dpkg --print-architecture)
+    echo $ARCH
     
     # Debian-like distribution
     DISTRO_NAME=$(lsb_release -i | cut -d ':' -f2 | tr -d '\t' | tr 'A-Z' 'a-z')
@@ -48,7 +49,7 @@ init()
     DISTRO_VERSION=$(lsb_release -c | cut -d ':' -f2 | tr -d '\t')
     
     # Configuration directory
-    CONF_DIR=./make_distro.d
+    export CONF_DIR=./make_distro.d
     
     # Partition label
     PARTITION_LABEL=${RANDOM}
@@ -71,6 +72,13 @@ init()
     # Syslog configuration
     SYSLOG_LABEL="make_distro"
     SYSLOG_SERVICE="user"
+
+    # Default profile directory
+    PROFILE_DIR=${CONF_DIR}/profile.d/default
+    DEFAULT_SCRIPT_PREPARE=${PROFILE_DIR}/prepare.sh
+    DEFAULT_SCRIPT_BURN=${PROFILE_DIR}/burn.sh
+    SCRIPT_PREPARE=$DEFAULT_SCRIPT_PREPARE
+    SCRIPT_BURN=$DEFAULT_SCRIPT_BURN
 }
 
 # Init all scripts internal commands
@@ -218,180 +226,6 @@ apt_dpkg_work()
     print_ok
 }
 
-prepare_ro_image()
-{
-    print_noln "Prepare ro image"
-
-    # Loopback
-    touch ${TARGET_DIR}_loop
-    check_result $?
-
-    # Create loopback mountpoint
-    mkdir ${TARGET_DIR}_image/
-    check_result $?
-
-    # Create filesystem
-    dd if=/dev/zero of=${TARGET_DIR}_loop bs=1 count=1 seek=1G
-    check_result $?
-    mkfs.ext2 -F -L rescue -m 0 ${TARGET_DIR}_loop
-    check_result $?
-
-    # Mount loopback
-    mount -o loop ${TARGET_DIR}_loop ${TARGET_DIR}_image
-    check_result $?
-
-    # Create casper needed directories
-    mkdir -p ${TARGET_DIR}_image/{casper,boot,boot/extlinux,install}
-    check_result $?
-
-    # Copy kernel and initrd for casper
-    cp ${TARGET_DIR}/boot/vmlinuz* ${TARGET_DIR}_image/casper/
-    check_result $?
-    cp ${TARGET_DIR}/boot/initrd.img* ${TARGET_DIR}_image/casper/
-    check_result $?
-
-    # Boot entries
-    cp ${CONF_DIR}/extlinux/* ${TARGET_DIR}_image/boot/extlinux/
-    check_result $?
-
-    for kernel in ${TARGET_DIR}_image/casper/vmlinuz*;
-    do
-        kernel=$(basename ${kernel})
-        initrd=$(echo ${kernel} | sed s/vmlinuz/initrd.img/)
-        echo "LABEL ${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-        echo "  menu label ^Start with kernel ${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-        echo "  kernel /casper/${kernel}" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-        if [ -f ${TARGET_DIR}_image/casper/${initrd} ]; then
-                echo "  append boot=casper initrd=/casper/${initrd} toram quiet splash --" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-        else
-                echo "  append boot=casper toram quiet splash --" >> ${TARGET_DIR}_image/boot/extlinux/extlinux.conf
-        fi
-    done      
-
-    # Create manifest files
-    ${CHROOT} dpkg-query -W --showformat='${Package} ${Version}\n' > ${TARGET_DIR}_image/casper/filesystem.manifest
-    check_result $?
-
-    touch ${TARGET_DIR}_image/ubuntu
-
-    mkdir ${TARGET_DIR}_image/.disk
-    echo "${DISTRO_VERSION}" > ${TARGET_DIR}_image/.disk/info
-    echo "http//geonobot-wiki.toile-libre.org" > ${TARGET_DIR}_image/.disk/release_notes_url
-
-    # Compress rootfs
-    mksquashfs ${TARGET_DIR} ${TARGET_DIR}_image/casper/filesystem.squashfs -noappend
-    check_result $?
-
-    # Copy README.diskdefines
-    cp ${CONF_DIR}/README.diskdefines ${TARGET_DIR}_image/
-    check_result $?
-
-    # Calculate MD5 Sum
-    (cd ${TARGET_DIR}_image && find . -type f -print0 | xargs -0 md5sum | grep -v "\./md5sum.txt" > md5sum.txt)
-    check_result $?
-
-    # Install bootloader
-    (cd ${TARGET_DIR}_image && extlinux --install boot/extlinux/)
-    check_result $?
-
-    # Umount loopback
-    umount ${TARGET_DIR}_image
-    check_result $?
-
-    # delete image mount point
-    rmdir ${TARGET_DIR}_image
-    check_result $?
-
-    # Check that target device is on USB bus
-    readlink -f /sys/block/$(basename ${TARGET_DEVICE}) | grep -oq usb
-    check_result $?
-
-    print_ok
-}
-
-burn_ro_image()
-{
-    print_noln "Burn ro image"
-
-    # Compress loopback
-    gzip -c ${TARGET_DIR}_loop > geonobot.gz
-    check_result $?
-
-    # Uncompress filesystem in target device
-    zcat geonobot.gz > ${ROOTFS_DEVICE}
-    check_result $?
-
-    print_ok
-}
-
-prepare_rw_image()
-{
-    print_noln "Prepare rw image"
-
-    # Create extlinux directory
-    mkdir -p ${TARGET_DIR}/boot/extlinux
-    check_result $?
-
-    # Boot entries
-    cp -f ${CONF_DIR}/extlinux/* ${TARGET_DIR}/boot/extlinux/
-    check_result $?
-    
-    echo "${CONF_DIR}/extlinux/* ${TARGET_DIR}/boot/extlinux/"
-
-    for kernel in ${TARGET_DIR}/boot/vmlinuz*;
-    do
-        kernel=$(basename ${kernel})
-        initrd=$(echo ${kernel} | sed s/vmlinuz/initrd.img/)
-        echo "LABEL ${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-        echo "  menu label ^Start with kernel ${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-        echo "  kernel /boot/${kernel}" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-        if [ -f ${TARGET_DIR}/boot/${initrd} ]; then
-                echo "  append init=/sbin/init --verbose root=/dev/disk/by-label/${PARTITION_LABEL} initrd=/boot/${initrd} console=ttyS0,115200n8 console=tty0" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-        else
-                echo "  append root=/dev/disk/by-label/${PARTITION_LABEL} quiet splash console=ttyS0,115200n8 console=tty0" >> ${TARGET_DIR}/boot/extlinux/extlinux.conf
-        fi
-    done
-
-    # Check that target device is on USB bus
-    readlink -f /sys/block/$(basename ${TARGET_DEVICE}) | grep -oq -e usb -e mmc_host
-    check_result $?
-
-    print_ok
-}
-
-burn_rw_image()
-{
-    print_noln "Burn rw image"
-
-    mount_point=/tmp/${RANDOM}
-
-    # Set partition label for kernel mount
-    e2label ${ROOTFS_DEVICE} ${PARTITION_LABEL}
-    check_result $?
-
-    # Mount target
-    mkdir -p ${mount_point}
-    check_result $?
-    mount ${ROOTFS_DEVICE}  ${mount_point}
-    check_result $?
-
-    # Copy rootfs to target
-    cp -Rf --preserve=all ${TARGET_DIR}/* ${mount_point}/
-    check_result $?
-
-    # Install bootloader
-    (cd ${mount_point}/ && extlinux --install boot/extlinux/)
-    check_result $?
-
-    # Umount and delete mountpoint
-    umount ${mount_point}/
-    check_result $?
-    rmdir ${mount_point}/
-    check_result $?
-
-    print_ok
-}
-
 umount_all_in_rootfs()
 {
     print_noln "Umount all in rootfs"
@@ -451,43 +285,17 @@ generate_distro()
     # Umount all
     umount_all_in_rootfs
 
-    if [ "${ONLY_ROOTFS}" == 0 ]; then
-        if [ "1" = ${READ_ONLY} ]; then
-            # Prepare image
-            prepare_ro_image
+    # Execute script to prepare target
+    print_noln "Execute '${SCRIPT_PREPARE}' script"
+    bash ${SCRIPT_PREPARE}
+    check_result $?
+    print_ok
 
-            # Prepare target device
-            prepare_target
-
-            # Burn image
-            burn_ro_image
-        else
-            # Prepare image
-            prepare_rw_image
-
-            # Execute script to prepare target
-            if [ "${SCRIPT_PREPARE}" != "" ]; then
-                print_noln "Execute '${SCRIPT_PREPARE}' script"
-                bash ${SCRIPT_PREPARE}
-                check_result $?
-                print_ok
-            else
-                # Prepare target device
-                prepare_target
-            fi
-
-            # Burn image
-            burn_rw_image
-
-            # Execute script after image is burned
-            if [ "${SCRIPT_BURN}" != "" ]; then
-                print_noln "Execute '${SCRIPT_BURN}' script"
-                bash ${SCRIPT_BURN}
-                check_result $?
-                print_ok
-            fi
-        fi
-    fi
+    # Burn target
+    print_noln "Execute '${SCRIPT_BURN}' script"
+    bash ${SCRIPT_BURN}
+    check_result $?
+    print_ok
 }
 
 uninstall()
@@ -541,7 +349,9 @@ Options:
         (-r|--read-only)                                 Read only distro
         (--script-rootfs)        <script>                Launch your script after rootfs is created and all package installed.
         (--script-prepare)       <script>                Launch your script to prepare the target device.
-        (--script-burn)          <script>                Launch your script after rootfs is burned on target device.
+                                                         (${DEFAULT_SCRIPT_PREPARE} by default)
+        (--script-burn)          <script>                Launch your script to burn rootfs on target device.
+                                                         (${DEFAULT_SCRIPT_BURN} by default)
         (-t|--target)            <target>                Target achitecture (same as host by default).
         (-v|--verbose)                                   Verbose mode
         "

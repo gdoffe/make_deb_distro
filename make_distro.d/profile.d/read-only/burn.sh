@@ -28,4 +28,16 @@
 ###########################################################################
 
 # Import generic functions.
-. <MAKE_DEB_DISTRO_PATH>/include/functions.sh
+. include/functions.sh
+
+print_noln "Burn ro image"
+
+# Compress loopback
+gzip -c ${TARGET_DIR}_loop > geonobot.gz
+check_result $?
+
+# Uncompress filesystem in target device
+zcat geonobot.gz > ${ROOTFS_DEVICE}
+check_result $?
+
+print_ok
