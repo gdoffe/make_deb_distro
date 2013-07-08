@@ -36,10 +36,8 @@ mkdir -p ${TARGET_DIR}/boot/extlinux
 check_result $?
 
 # Boot entries
-cp -f ${CONF_DIR}/extlinux/* ${TARGET_DIR}/boot/extlinux/
+cp -f ${PROFILE_DIR}/tools/extlinux/* ${TARGET_DIR}/boot/extlinux/
 check_result $?
-
-echo "${CONF_DIR}/extlinux/* ${TARGET_DIR}/boot/extlinux/"
 
 for kernel in ${TARGET_DIR}/boot/vmlinuz*;
 do

@@ -23,9 +23,6 @@
 # Init all script variables
 init()
 {
-    # Final target will be burn read only if different of 0.
-    READ_ONLY=0
-
     # Script is verbose if different of 0.
     VERBOSE=0
 
@@ -40,16 +37,12 @@ init()
     
     # Target architecture
     ARCH=$(dpkg --print-architecture)
-    echo $ARCH
     
     # Debian-like distribution
     DISTRO_NAME=$(lsb_release -i | cut -d ':' -f2 | tr -d '\t' | tr 'A-Z' 'a-z')
     
     # Debian-like version
     DISTRO_VERSION=$(lsb_release -c | cut -d ':' -f2 | tr -d '\t')
-    
-    # Configuration directory
-    export CONF_DIR=./make_distro.d
     
     # Partition label
     PARTITION_LABEL=${RANDOM}
@@ -74,9 +67,11 @@ init()
     SYSLOG_SERVICE="user"
 
     # Default profile directory
-    PROFILE_DIR=${CONF_DIR}/profile.d/default
+    export PROFILE_DIR=make-deb-distro.d/profile.d/default
+    DEFAULT_SCRIPT_ROOTFS=${PROFILE_DIR}/rootfs.sh
     DEFAULT_SCRIPT_PREPARE=${PROFILE_DIR}/prepare.sh
     DEFAULT_SCRIPT_BURN=${PROFILE_DIR}/burn.sh
+    SCRIPT_ROOTFS=$DEFAULT_SCRIPT_ROOTFS
     SCRIPT_PREPARE=$DEFAULT_SCRIPT_PREPARE
     SCRIPT_BURN=$DEFAULT_SCRIPT_BURN
 }
@@ -98,8 +93,8 @@ create_rootfs()
         if [ "" != "${APT_REPO_SECTIONS}" ]; then
                 components_option="--components=$(echo ${APT_REPO_SECTIONS} | tr ' ' ',')"
         fi
-        if [ "" != "${PACKAGES_MANDATORY}" ] || [ "" != "${PACKAGES_WANTED}" ]; then
-                include_option="--include=$(echo ${PACKAGES_WANTED} ${PACKAGES_MANDATORY} | tr ' ' ',')"
+        if [ "" != "${PACKAGES}" ]; then
+                include_option="--include=$(echo ${PACKAGES} | tr ' ' ',')"
         fi
         if [ "" != "${PACKAGES_EXCLUDED}" ]; then
                 exclude_option="--exclude=$(echo ${PACKAGES_EXCLUDED} | tr ' ' ',')"
@@ -145,16 +140,6 @@ prepare_rootfs()
     echo "do_initrd=yes" >> ${TARGET_DIR}/etc/kernel-img.conf
     check_result $?
 
-    if [ "1" != ${READ_ONLY} ]; then
-        ${CHROOT} userdel ubuntu
-        ${CHROOT} useradd -d /home/ubuntu -s /bin/bash -m -p `mkpasswd ubuntu` ubuntu
-        check_result $?
-        sed '/^ubuntu/d' ${TARGET_DIR}/etc/sudoers > ${TARGET_DIR}/etc/sudoers
-        check_result $?
-        echo "ubuntu ALL=(ALL) ALL" >> ${TARGET_DIR}/etc/sudoers
-        check_result $?
-    fi
-
     print_ok
 }
 
@@ -197,23 +182,6 @@ apt_dpkg_work()
             rm ${TARGET_DIR}/$(basename ${package})
             check_result $?
         done
-    fi
-
-    # Add updates
-    # TODO make next step dynamic
-    #(echo "deb http://archive.ubuntu.com/ubuntu ${APT_REPO_BRANCH}-updates main restricted universe multiverse" >> ${TARGET_DIR}/etc/apt/sources.list)
-    #check_result $?
-    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} apt-get update
-    #check_result $?
-    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} apt-get upgrade -y
-    #check_result $?
-
-    # Disable apt-cdrom in initramfs since it is not an installation distrib
-    if [ "1" = ${READ_ONLY} ]; then
-        if [[ -x ${TARGET_DIR}/usr/share/initramfs-tools/scripts/casper-bottom/41apt_cdrom ]]; then 
-            chmod a-x ${TARGET_DIR}/usr/share/initramfs-tools/scripts/casper-bottom/41apt_cdrom
-            check_result $?
-        fi
     fi
 
     # Update all initrd in /boot
@@ -339,6 +307,7 @@ print_usage()
 Options:
         (-a|--action)            <action>                Action : "install" or "uninstall".
         (-b|--target-device)     <device>                Target device
+        (-c|--configuration)     <file>                  Configuration file
         (-d|--target-dir)        <path>                  Bootstrap path
         (-e|--excluded-packages) \"<excluded-packages>\" Packages to exclude from bootstrap process. List must be quoted.
         (-f|--only-rootfs)                               Build rootfs only
@@ -346,7 +315,6 @@ Options:
         (-n|--distro-version)    <distro-name>           Debian/Ubuntu distribution name (same as host by default).
         (-o|--deb-packages)      \"<deb-packages>\"      Local .deb packages. List must be quoted.
         (-p|--packages)          \"<packages>\"          Distro packages to use. List must be quoted.
-        (-r|--read-only)                                 Read only distro
         (--script-rootfs)        <script>                Launch your script after rootfs is created and all package installed.
         (--script-prepare)       <script>                Launch your script to prepare the target device.
                                                          (${DEFAULT_SCRIPT_PREPARE} by default)
@@ -359,7 +327,7 @@ Options:
 
 parse_options()
 {
-    ARGS=$(getopt -o "a:b:d:e:fhk:n:o:p:rt:u:vw" -l "action:,deb-packages:,device:,distro-name:,excluded-packages:,help,only-rootfs,packages:,read-only,script-prepare:,script-rootfs:,script-burn:,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
+    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:o:p:t:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
 
     #Bad arguments
     if [ $? -ne 0 ]; then
@@ -377,6 +345,11 @@ parse_options()
 
             -b|--target-device)
                 TARGET_DEVICE="$2"
+                shift 2
+                ;;
+
+            -c|--configuration)
+                . $2
                 shift 2
                 ;;
 
@@ -428,16 +401,11 @@ parse_options()
             -p|--packages)
                 echo $2 | grep "^-" > /dev/null
                 while [ $? -ne 0 ]; do
-                    PACKAGES_WANTED="$PACKAGES_WANTED $2"
+                    PACKAGES="$PACKAGES $2"
                     shift
                     echo $2 | grep "^-" > /dev/null
                 done
                 shift 
-                ;;
-
-            -r|--read-only)
-                READ_ONLY=1
-                shift
                 ;;
 
             --script-rootfs)
@@ -494,12 +462,9 @@ init_commands
 # Determines apt repository according to distro
 case ${DISTRO_NAME} in
     "ubuntu")
-        if [ "1" = ${READ_ONLY} ]; then
-                PACKAGES_MANDATORY="casper discover laptop-detect"
-        fi
         ;;
     "debian")
-        PACKAGES_MANDATORY="initramfs-tools"
+        PACKAGES="$PACKAGES initramfs-tools"
         ;;
     *)
         echo "Error : Bad Debian-like distro..."

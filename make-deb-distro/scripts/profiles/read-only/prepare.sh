@@ -35,7 +35,7 @@ touch ${TARGET_DIR}_loop
 check_result $?
 
 # Create loopback mountpoint
-mkdir ${TARGET_DIR}_image/
+mkdir -p ${TARGET_DIR}_image/
 check_result $?
 
 # Create filesystem
@@ -59,7 +59,7 @@ cp ${TARGET_DIR}/boot/initrd.img* ${TARGET_DIR}_image/casper/
 check_result $?
 
 # Boot entries
-cp ${CONF_DIR}/extlinux/* ${TARGET_DIR}_image/boot/extlinux/
+cp ${PROFILE_DIR}/tools/extlinux/* ${TARGET_DIR}_image/boot/extlinux/
 check_result $?
 
 for kernel in ${TARGET_DIR}_image/casper/vmlinuz*;
@@ -82,7 +82,7 @@ check_result $?
 
 touch ${TARGET_DIR}_image/ubuntu
 
-mkdir ${TARGET_DIR}_image/.disk
+mkdir -p ${TARGET_DIR}_image/.disk
 echo "${DISTRO_VERSION}" > ${TARGET_DIR}_image/.disk/info
 echo "http//geonobot-wiki.toile-libre.org" > ${TARGET_DIR}_image/.disk/release_notes_url
 
@@ -91,7 +91,7 @@ mksquashfs ${TARGET_DIR} ${TARGET_DIR}_image/casper/filesystem.squashfs -noappen
 check_result $?
 
 # Copy README.diskdefines
-cp ${CONF_DIR}/README.diskdefines ${TARGET_DIR}_image/
+cp ${PROFILE_DIR}/tools/README.diskdefines ${TARGET_DIR}_image/
 check_result $?
 
 # Calculate MD5 Sum
