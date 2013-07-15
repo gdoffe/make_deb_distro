@@ -28,4 +28,4 @@
 ###########################################################################
 
 # Import generic functions.
-. include/functions.sh
+. ${INCLUDE_DIR}/functions.sh

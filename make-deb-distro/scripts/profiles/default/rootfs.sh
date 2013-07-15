@@ -28,7 +28,7 @@
 ###########################################################################
 
 # Import generic functions.
-. include/functions.sh
+. ${INCLUDE_DIR}/functions.sh
 
 ${CHROOT} userdel ubuntu
 ${CHROOT} useradd -d /home/ubuntu -s /bin/bash -m -p `mkpasswd ubuntu` ubuntu

@@ -28,7 +28,7 @@
 ###########################################################################
 
 # Import generic functions.
-. include/functions.sh
+. ${INCLUDE_DIR}/functions.sh
 
 print_noln "Burn ro image"
 

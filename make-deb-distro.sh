@@ -18,7 +18,8 @@
 # Depends on realpath whois qemu-user-static squashfs-tools extlinux mbr debootstrap
 
 # Include generic functions
-. include/functions.sh
+export INCLUDE_DIR=/usr/share/make-deb-distro/scripts/include
+. ${INCLUDE_DIR}/functions.sh
 
 # Init all script variables
 init()
@@ -45,7 +46,7 @@ init()
     DISTRO_VERSION=$(lsb_release -c | cut -d ':' -f2 | tr -d '\t')
     
     # Partition label
-    PARTITION_LABEL=${RANDOM}
+    export PARTITION_LABEL=${RANDOM}
     
     # Apt options
     #APT_INSTALL_OPTIONS="--no-install-recommends"
@@ -67,7 +68,7 @@ init()
     SYSLOG_SERVICE="user"
 
     # Default profile directory
-    export PROFILE_DIR=make-deb-distro.d/profile.d/default
+    export PROFILE_DIR=/usr/share/make-deb-distro/scripts/profiles/default
     DEFAULT_SCRIPT_ROOTFS=${PROFILE_DIR}/rootfs.sh
     DEFAULT_SCRIPT_PREPARE=${PROFILE_DIR}/prepare.sh
     DEFAULT_SCRIPT_BURN=${PROFILE_DIR}/burn.sh
@@ -79,7 +80,7 @@ init()
 # Init all scripts internal commands
 init_commands()
 {
-    CHROOT="chroot ${TARGET_DIR}"
+    export CHROOT="chroot ${TARGET_DIR}"
 }
 
 create_rootfs()

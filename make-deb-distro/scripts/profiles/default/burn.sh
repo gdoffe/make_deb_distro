@@ -28,38 +28,30 @@
 ###########################################################################
 
 # Import generic functions.
-. include/functions.sh
+. ${INCLUDE_DIR}/functions.sh
 
-burn_rw_image() 
-{ 
-    print_noln "Burn rw image" 
- 
-    mount_point=/tmp/${RANDOM} 
- 
-    # Set partition label for kernel mount 
-    e2label ${ROOTFS_DEVICE} ${PARTITION_LABEL} 
-    check_result $? 
- 
-    # Mount target 
-    mkdir -p ${mount_point} 
-    check_result $? 
-    mount ${ROOTFS_DEVICE}  ${mount_point} 
-    check_result $? 
- 
-    # Copy rootfs to target 
-    cp -Rf --preserve=all ${TARGET_DIR}/* ${mount_point}/ 
-    check_result $? 
- 
-    # Install bootloader 
-    (cd ${mount_point}/ && extlinux --install boot/extlinux/) 
-    check_result $? 
- 
-    # Umount and delete mountpoint 
-    umount ${mount_point}/ 
-    check_result $? 
-    rmdir ${mount_point}/ 
-    check_result $? 
- 
-    print_ok 
-}
+mount_point=/tmp/${RANDOM} 
 
+# Set partition label for kernel mount 
+e2label ${ROOTFS_DEVICE} ${PARTITION_LABEL} 
+check_result $? 
+
+# Mount target 
+mkdir -p ${mount_point} 
+check_result $? 
+mount ${ROOTFS_DEVICE}  ${mount_point} 
+check_result $? 
+
+# Copy rootfs to target 
+cp -Rf --preserve=all ${TARGET_DIR}/* ${mount_point}/ 
+check_result $? 
+
+# Install bootloader 
+(cd ${mount_point}/ && extlinux --install boot/extlinux/) 
+check_result $? 
+
+# Umount and delete mountpoint 
+umount ${mount_point}/ 
+check_result $? 
+rmdir ${mount_point}/ 
+check_result $? 
