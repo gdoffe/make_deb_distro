@@ -16,7 +16,7 @@ Version: 1.0
 Section: Utilities
 Priority: optional
 Architecture: all
-Depends: bash,realpath,whois,qemu-user-static,squashfs-tools,extlinux,mbr,debootstrap
+Depends: bash,realpath,whois,qemu-user-static,qemu-system,binfmt-support,squashfs-tools,extlinux,mbr,debootstrap
 Maintainer: Gilles DOFFE <gdoffe@gmail.com>
 Description: Build a custom ubuntu/debian distro.
 Homepage: https://github.com/gdoffe/make_deb_distro" > ${PKGDIR}/DEBIAN/control

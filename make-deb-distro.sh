@@ -31,7 +31,7 @@ init()
     ONLY_ROOTFS=0
 
     # Target roots filesystem
-    export TARGET_DIR="${PWD}/../targetdir"
+    export TARGET_DIR="$(realpath ${PWD}/../targetdir)"
 
     # Target device
     export TARGET_DEVICE=
@@ -355,7 +355,7 @@ parse_options()
                 ;;
 
             -d|--target-dir)
-                TARGET_DIR="$2"
+                TARGET_DIR="$(realpath $2)"
                 if [ "?" = "${TARGET_DIR}" ] || [ ":" = "${TARGET_DIR}" ] || [ "" = "${TARGET_DIR}" ]; then
                     echo "Wrong destination directory. Exiting."
                     exit 1
