@@ -15,8 +15,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Depends on realpath whois qemu-user-static squashfs-tools extlinux mbr debootstrap
-
 # Include generic functions
 export INCLUDE_DIR=/usr/share/make-deb-distro/scripts/include
 . ${INCLUDE_DIR}/functions.sh
