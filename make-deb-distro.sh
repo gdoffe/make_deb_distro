@@ -80,7 +80,6 @@ init()
 # Init all scripts internal commands
 init_commands()
 {
-	TARGET_DIR=$(realpath $TARGET_DIR)
     export CHROOT="chroot ${TARGET_DIR}"
 }
 
@@ -106,8 +105,6 @@ create_rootfs()
         #chvt `fgconsole --next-available` && chvt ${actualvt}
         qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DISTRO_VERSION} ${TARGET_DIR}
         check_result $?
-
-        TARGET_DIR=`realpath ${TARGET_DIR}`
     fi
 
     print_ok
@@ -271,7 +268,6 @@ generate_distro()
 uninstall()
 {
     if [[ -d ${TARGET_DIR} ]]; then
-        TARGET_DIR=`realpath ${TARGET_DIR}`
         # Umount all
         umount_all_in_rootfs
     
@@ -458,6 +454,11 @@ init
 # Parse options
 parse_options "${@}"
 
+
+TARGET_DIR=$(realpath $TARGET_DIR)
+PROFILE_DIR=$(realpath $PROFILE_DIR)
+
+
 # Init internal commands
 init_commands
 
@@ -494,12 +495,11 @@ if [ "${VERBOSE}" = "0" ]; then
     exec 6>&1
     exec 7>&2
 
-    exec 1>$(dirname ${TARGET_DIR})/$(basename ${TARGET_DIR}).log
+    exec 1>${TARGET_DIR%/}.log
     exec 2>&1
 fi
 
 print_out "Starting. Please wait..."
-echo $RANDOM
 
 # Check action to perform
 if [ "uninstall" = "${action}" ]; then
