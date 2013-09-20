@@ -1,0 +1,11 @@
+1.0.0 - 2013-09-20  Gilles DOFFE  <gdoffe+git@gmail.com>
+
+* First release
+* Build a custom debian/ubuntu distribution
+* User can choose debian/ubuntu version
+* Package selection (apt or .deb)
+* Support all architecture supported by debian/ubuntu
+* Personnal customization can be done through scripts
+* Write your own profile configuration file
+* Default profile delivered for x86/x86_64 architecture
+
