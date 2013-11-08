@@ -452,10 +452,9 @@ init
 # Parse options
 parse_options "${@}"
 
-
-TARGET_DIR=$(realpath $TARGET_DIR)
+# Set paths to absolute
+TARGET_DIR=$(realpath $(dirname $TARGET_DIR))/$(basename $TARGET_DIR)
 PROFILE_DIR=$(realpath $PROFILE_DIR)
-
 
 # Init internal commands
 init_commands
