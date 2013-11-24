@@ -19,7 +19,7 @@ cp ${SRCDIR}/make-deb-distro.sh ${PKGDIR}/usr/bin/make-deb-distro
 cp -Rf ${SRCDIR}/make-deb-distro/profiles/ ${PKGDIR}/etc/make-deb-distro/
 cp -Rf ${SRCDIR}/make-deb-distro/scripts ${PKGDIR}/usr/share/make-deb-distro/
 cp -Rf ${SRCDIR}/make-deb-distro/templates ${PKGDIR}/usr/share/make-deb-distro/
-gzip -c -9 ${SRCDIR}/Changelog > ${PKGDIR}/usr/share/doc/make-deb-distro/changelog.gz
+gzip -c -9 ${SRCDIR}/changelog > ${PKGDIR}/usr/share/doc/make-deb-distro/changelog.gz
 cp ${SRCDIR}/copyright ${PKGDIR}/usr/share/doc/make-deb-distro/copyright
 
 
@@ -35,7 +35,8 @@ Priority: optional
 Architecture: all
 Depends: realpath,whois,qemu-user-static,qemu-system,binfmt-support,squashfs-tools,extlinux,mbr,debootstrap
 Maintainer: Gilles DOFFE <gdoffe@gmail.com>
-Description: Build a custom ubuntu/debian distro.
+Description:
+ Build a custom ubuntu/debian distro.
  Based on qemu and debootstrap.
 Homepage: https://github.com/gdoffe/make_deb_distro
 Installed-Size: ${installed_size}" > ${PKGDIR}/DEBIAN/control
