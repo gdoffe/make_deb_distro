@@ -1,3 +1,9 @@
+# Chack we are root
+if [ $(id -u) != "0" ]; then
+    echo "Error: Must be root to launch this script." > /dev/stderr
+    exit 1
+fi
+
 # Create your scripts source dir
 SRCDIR=../
 PKGDIR=make-deb-distro
