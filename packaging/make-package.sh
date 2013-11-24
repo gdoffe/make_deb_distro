@@ -35,10 +35,9 @@ Priority: optional
 Architecture: all
 Depends: realpath,whois,qemu-user-static,qemu-system,binfmt-support,squashfs-tools,extlinux,mbr,debootstrap
 Maintainer: Gilles DOFFE <gdoffe@gmail.com>
-Description:
- Build a custom ubuntu/debian distro.
- Based on qemu and debootstrap.
-Homepage: https://github.com/gdoffe/make_deb_distro
+Description: Build a custom ubuntu/debian distro.
+ Build a full customized ubuntu or debian distro for all supported targets.
+Homepage: https://github.com/geonobot/make_deb_distro
 Installed-Size: ${installed_size}" > ${PKGDIR}/DEBIAN/control
 
 #echo "Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
