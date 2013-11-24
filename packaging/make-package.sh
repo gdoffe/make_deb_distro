@@ -17,7 +17,7 @@ cp -Rf ${SRCDIR}/make-deb-distro/profiles/ ${PKGDIR}/etc/make-deb-distro/
 cp -Rf ${SRCDIR}/make-deb-distro/scripts ${PKGDIR}/usr/share/make-deb-distro/
 cp -Rf ${SRCDIR}/make-deb-distro/templates ${PKGDIR}/usr/share/make-deb-distro/
 
-installed_size=$(du -sb ${PKGDIR} | cut -s -f1)
+installed_size=$(du -s ${PKGDIR} | cut -s -f1)
 
 echo "Package: make-deb-distro
 Version: 0.1
