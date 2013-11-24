@@ -20,7 +20,7 @@ cp -Rf ${SRCDIR}/make-deb-distro/templates ${PKGDIR}/usr/share/make-deb-distro/
 installed_size=$(du -sb ${PKGDIR} | cut -s -f1)
 
 echo "Package: make-deb-distro
-Version: 1.0
+Version: 0.1
 Section: Utilities
 Priority: optional
 Architecture: all
