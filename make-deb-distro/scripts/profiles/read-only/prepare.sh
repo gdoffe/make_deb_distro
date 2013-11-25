@@ -118,5 +118,5 @@ rmdir ${TARGET_DIR}_image
 check_result $?
 
 # Check that target device is on USB bus
-readlink -f /sys/block/$(basename ${TARGET_DEVICE}) | grep -oq usb
+readlink -f /sys/block/$(basename ${TARGET_DEVICE}) | grep -oq -e usb -e mmc_host
 check_result $?
