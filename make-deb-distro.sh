@@ -312,12 +312,12 @@ Options:
         (-b|--target-device)     <device>                Target device
         (-c|--configuration)     <file>                  Configuration file
         (-d|--target-dir)        <path>                  Bootstrap path
-        (-e|--excluded-packages) \"<excluded-packages>\" Packages to exclude from bootstrap process. List must be quoted.
+        (-e|--excluded-packages) \"<excluded-packages>\"   Packages to exclude from bootstrap process. List must be quoted.
         (-f|--only-rootfs)                               Build rootfs only
         (-h|--help)                                      Display this help message
         (-n|--distro-version)    <distro-name>           Debian/Ubuntu distribution name (same as host by default).
-        (-o|--deb-packages)      \"<deb-packages>\"      Local .deb packages. List must be quoted.
-        (-p|--packages)          \"<packages>\"          Distro packages to use. List must be quoted.
+        (-o|--deb-packages)      \"<deb-packages>\"        Local .deb packages. List must be quoted.
+        (-p|--packages)          \"<packages>\"            Distro packages to use. List must be quoted.
         (--script-rootfs)        <script>                Launch your script after rootfs is created and all package installed.
         (--script-prepare)       <script>                Launch your script to prepare the target device.
                                                          (${DEFAULT_SCRIPT_PREPARE} by default)
