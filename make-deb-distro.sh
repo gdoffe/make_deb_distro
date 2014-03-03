@@ -471,7 +471,6 @@ case ${DISTRO_NAME} in
     "ubuntu")
         ;;
     "debian")
-        PACKAGES="$PACKAGES initramfs-tools"
         ;;
     *)
         echo "Error : Bad Debian-like distro..."
