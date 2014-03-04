@@ -85,6 +85,9 @@ init()
 # Init all scripts internal commands
 init_commands()
 {
+    export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+    export LC_ALL=C
     export CHROOT="chroot ${TARGET_DIR}"
 }
 
@@ -173,6 +176,28 @@ apt_dpkg_work()
         check_result $?
     fi
 
+    # Generate /etc/apt/sources.list
+    rm -f /etc/apt/sources.list
+    echo "deb $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS
+deb-src $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/sources.list
+    check_result $?
+
+    # Update package list
+    ${CHROOT} apt-get update
+    check_result $?
+
+    # Install packages from repository. Will install only missing packages.
+    if [ "" != "${PACKAGES}" ]; then
+        ${CHROOT} apt-get install ${PACKAGES} -y
+        check_result $?
+    fi
+
+    # Remove unwanted packages.
+    if [ "" != "${PACKAGES_EXCLUDED}" ]; then
+        ${CHROOT} apt-get purge ${PACKAGES_EXCLUDED} -y
+        check_result $?
+    fi
+
     # Install packages from .deb
     if [ "" != "${PACKAGES_DEB}" ]; then
         logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Install other debian packages"
@@ -180,8 +205,10 @@ apt_dpkg_work()
         check_result $?
         for package in ${PACKAGES_DEB};
         do
-            DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -r $(${CHROOT} dpkg-deb -W --showformat '${Package}' /$(basename ${package}))
-            DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -i /$(basename ${package})
+            #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -r $(${CHROOT} dpkg-deb -W --showformat '${Package}' /$(basename ${package}))
+            ${CHROOT} dpkg -r $(${CHROOT} dpkg-deb -W --showformat '${Package}' /$(basename ${package}))
+            #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -i /$(basename ${package})
+            ${CHROOT} dpkg -i /$(basename ${package})
             check_result $?
             rm ${TARGET_DIR}/$(basename ${package})
             check_result $?
@@ -366,13 +393,9 @@ parse_options()
                 ;;
 
             -e|--excluded-packages)
-                echo $2 | grep "^-" > /dev/null
-                while [ $? -ne 0 ]; do
-                    PACKAGES_EXCLUDED="$PACKAGES_EXCLUDED $2"
-                    shift
-                    echo $2 | grep "^-" > /dev/null
-                done
-                shift 
+                PACKAGES_EXCLUDED="$PACKAGES_EXCLUDED $2"
+                echo $PACKAGES_EXCLUDED
+                shift 2
                 ;;
 
             -f|--only-rootfs)
@@ -392,23 +415,15 @@ parse_options()
                 ;;
 
             -o|--deb-packages)
-                echo $2 | grep "^-" > /dev/null
-                while [ $? -ne 0 ]; do
-                    PACKAGES_DEB="$PACKAGES_DEB $2"
-                    shift
-                    echo $2 | grep "^-" > /dev/null
-                done
-                shift 
+                PACKAGES_DEB="$PACKAGES_DEB $2"
+                echo $PACKAGES_DEB
+                shift 2
                 ;;
 
             -p|--packages)
-                echo $2 | grep "^-" > /dev/null
-                while [ $? -ne 0 ]; do
-                    PACKAGES="$PACKAGES $2"
-                    shift
-                    echo $2 | grep "^-" > /dev/null
-                done
-                shift 
+                PACKAGES="$PACKAGES $2"
+                echo $PACKAGES
+                shift 2
                 ;;
 
             --script-rootfs)
@@ -469,8 +484,17 @@ init_commands
 # Determines apt repository according to distro
 case ${DISTRO_NAME} in
     "ubuntu")
+        case $ in
+            amd64|i386)
+              APT_MIRROR="http://archive.ubuntu.com/ubuntu"
+              ;;
+            *)
+              APT_MIRROR="http://ports.ubuntu.com/ubuntu-ports"
+              ;;
+          esac
         ;;
     "debian")
+        APT_MIRROR="http://ftp.us.debian.org/debian"
         ;;
     *)
         echo "Error : Bad Debian-like distro..."
