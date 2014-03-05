@@ -177,7 +177,7 @@ apt_dpkg_work()
     fi
 
     # Generate /etc/apt/sources.list
-    rm -f /etc/apt/sources.list
+    rm -f ${TARGET_DIR}/etc/apt/sources.list
     echo "deb $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS
 deb-src $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/sources.list
     check_result $?
