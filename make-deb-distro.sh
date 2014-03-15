@@ -284,17 +284,19 @@ generate_distro()
     # Umount all
     umount_all_in_rootfs
 
-    # Execute script to prepare target
-    print_noln "Execute '${SCRIPT_PREPARE}' script"
-    bash ${SCRIPT_PREPARE}
-    check_result $?
-    print_ok
+    if [ "${ONLY_ROOTFS}" = "0" ]; then
+        # Execute script to prepare target
+        print_noln "Execute '${SCRIPT_PREPARE}' script"
+        bash ${SCRIPT_PREPARE}
+        check_result $?
+        print_ok
 
-    # Burn target
-    print_noln "Execute '${SCRIPT_BURN}' script"
-    bash ${SCRIPT_BURN}
-    check_result $?
-    print_ok
+        # Burn target
+        print_noln "Execute '${SCRIPT_BURN}' script"
+        bash ${SCRIPT_BURN}
+        check_result $?
+        print_ok
+    fi
 }
 
 uninstall()
@@ -503,8 +505,8 @@ case ${DISTRO_NAME} in
 esac
 
 # Check target device
-if [ ! -b ${TARGET_DEVICE} ]; then
-    echo "Error : Target device does not exist..."
+if [ ${ONLY_ROOTFS} = "0" ] && ( [ -z ${TARGET_DEVICE} ] || [ ! -b ${TARGET_DEVICE} ] ); then
+    echo "Error : Target device does not exist or not set..."
     exit 2
 fi
 
