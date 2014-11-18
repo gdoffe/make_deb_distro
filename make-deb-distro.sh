@@ -486,7 +486,7 @@ init_commands
 # Determines apt repository according to distro
 case ${DISTRO_NAME} in
     "ubuntu")
-        case $ in
+        case ${ARCH} in
             amd64|i386)
               APT_MIRROR="http://archive.ubuntu.com/ubuntu"
               ;;
