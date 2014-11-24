@@ -109,8 +109,6 @@ create_rootfs()
                 exclude_option="--exclude=$(echo ${PACKAGES_EXCLUDED} | tr ' ' ',')"
         fi
 
-        #actualvt=$(fgconsole)
-        #chvt `fgconsole --next-available` && chvt ${actualvt}
         qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DISTRO_VERSION} ${TARGET_DIR}
         check_result $?
     fi
