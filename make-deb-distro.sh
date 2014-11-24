@@ -264,7 +264,13 @@ umount_image()
 generate_distro()
 {
     # Create rootfs
-    create_rootfs
+    if [ ! -f ${TARGET_DIR}/.stamp_rootfs ]; then
+        create_rootfs
+        touch ${TARGET_DIR}/.stamp_rootfs
+    else
+        print_noln "Rootfs already created, skipping"
+        print_warn
+    fi
 
     # Prepare rootfs
     prepare_rootfs
