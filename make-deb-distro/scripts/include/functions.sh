@@ -83,6 +83,15 @@ print_ko()
     fi
 }
 
+print_warn()
+{
+    if [ "${VERBOSE}" = "0" ]; then
+        shift
+        print_warn_ &
+        wait $!
+    fi
+}
+
 print_ok_()
 {
     if [ "${VERBOSE}" = "0" ]; then
@@ -101,3 +110,11 @@ print_ko_()
     printf "%${column}s\n" "[${RED}KO${DEFAULT_COLOR}]"
 }
 
+print_warn_()
+{
+    if [ "${VERBOSE}" = "0" ]; then
+        exec 1>&6 6>&-
+    fi
+    column=$((COLUMNS - str_size))
+    printf "%${column}s\n" "[${ORANGE}--${DEFAULT_COLOR}]"
+}

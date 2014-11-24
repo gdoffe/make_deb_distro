@@ -67,6 +67,7 @@ init()
     DEFAULT_COLOR=$(tput sgr0)
     GREEN=$(tput setaf 2)
     RED=$(tput setaf 1)
+    ORANGE=$(tput setaf 3)
     
     # Syslog configuration
     SYSLOG_LABEL="make_distro"
