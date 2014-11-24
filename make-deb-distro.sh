@@ -98,7 +98,7 @@ create_rootfs()
 
     # Build minimal rootfs
     if [ ! -d ${TARGET_DIR} ]; then
-        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Build minimal rootfs"
+        logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Build minimal rootfs"
 
         if [ "" != "${APT_REPO_SECTIONS}" ]; then
                 components_option="--components=$(echo ${APT_REPO_SECTIONS} | tr ' ' ',')"
@@ -112,6 +112,9 @@ create_rootfs()
 
         qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DISTRO_VERSION} ${TARGET_DIR}
         check_result $?
+    else
+        logger -t "${SYSLOG_LABEL} ERROR" -p ${SYSLOG_SERVICE}.error -s "Target directory already exists but missing stamp file"
+        check_result -1
     fi
 
     print_ok
@@ -122,25 +125,25 @@ prepare_rootfs()
     print_noln "Prepare rootfs"
 
     # Mount proc and sys and pts
-    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /proc"
+    logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Mount /proc"
     ${CHROOT} mount -t proc   none /proc
     check_result $?
 
-    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /sys"
+    logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Mount /sys"
     ${CHROOT} mount -t sysfs  none /sys
     check_result $?
 
-    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Mount /dev/pts"
+    logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Mount /dev/pts"
     ${CHROOT} mount -t devpts none /dev/pts
     check_result $?
 
     # Create /etc/mtab
-    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Create /etc/mtab"
+    logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Create /etc/mtab"
     grep -v rootfs ${TARGET_DIR}/proc/mounts > ${TARGET_DIR}/etc/mtab
     check_result $?
 
     # Allow kernel initrd creation
-    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Allow kernel initrd creation"
+    logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Allow kernel initrd creation"
     sed '/do_initrd/d' ${TARGET_DIR}/etc/kernel-img.conf > ${TARGET_DIR}/etc/kernel-img.conf
     check_result $?
     echo "do_initrd=yes" >> ${TARGET_DIR}/etc/kernel-img.conf
@@ -170,7 +173,7 @@ apt_dpkg_work()
 
     # Set apt proxy
     if [ "" != "${APT_HTTP_PROXY}" ]; then
-    logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Set apt proxy"
+    logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Set apt proxy"
         echo "Acquire::http::proxy \"${APT_HTTP_PROXY}\";" >> ${TARGET_DIR}/etc/apt/apt.conf
         check_result $?
     fi
@@ -199,7 +202,7 @@ deb-src $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/
 
     # Install packages from .deb
     if [ "" != "${PACKAGES_DEB}" ]; then
-        logger -t ${SYSLOG_LABEL} -p ${SYSLOG_SERVICE}.info "Install other debian packages"
+        logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Install other debian packages"
         cp ${PACKAGES_DEB} ${TARGET_DIR}/
         check_result $?
         for package in ${PACKAGES_DEB};
