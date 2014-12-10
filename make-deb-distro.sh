@@ -60,7 +60,7 @@ init()
     # apt repo branch
     APT_REPO_BRANCH=${DISTRO_VERSION}
     
-    APT_REPO_SECTIONS="main restricted universe multiverse"
+    APT_REPO_SECTIONS="main"
     
     # Display variables
     COLUMNS=$(tput cols)
@@ -266,10 +266,15 @@ generate_distro()
     # Create rootfs
     if [ ! -f ${TARGET_DIR}/.stamp_rootfs ]; then
         create_rootfs
-        touch ${TARGET_DIR}/.stamp_rootfs
+        echo ${DISTRO_NAME}_${DISTRO_VERSION}_${ARCH} > ${TARGET_DIR}/.stamp_rootfs
     else
-        print_noln "Rootfs already created, skipping"
+        print_noln "Rootfs already exist, creation skipped"
         print_warn
+
+        print_noln "Checking rootfs"
+        grep -q ${DISTRO_NAME}_${DISTRO_VERSION}_${ARCH} ${TARGET_DIR}/.stamp_rootfs
+        check_result $? "Rootfs already exists but distro name, version or arch are different"
+        print_ok
     fi
 
     # Prepare rootfs
@@ -506,7 +511,8 @@ case ${DISTRO_NAME} in
             *)
               APT_MIRROR="http://ports.ubuntu.com/ubuntu-ports"
               ;;
-          esac
+        esac
+        APT_REPO_SECTIONS="${APT_REPO_SECTIONS} restricted universe multiverse"
         ;;
     "debian")
         APT_MIRROR="http://ftp.us.debian.org/debian"
