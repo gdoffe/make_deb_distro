@@ -367,7 +367,7 @@ Options:
 
 parse_options()
 {
-    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:o:p:t:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
+    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:N:o:p:t:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,distro-version,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
 
     #Bad arguments
     if [ $? -ne 0 ]; then
@@ -419,7 +419,12 @@ parse_options()
                 shift
                 ;;
 
-            -n|--distro-version)
+            -n|--distro-name)
+                DISTRO_NAME=$2
+                shift 2
+                ;;
+
+            -N|--distro-version)
                 DISTRO_VERSION=$2
                 shift 2
                 ;;
