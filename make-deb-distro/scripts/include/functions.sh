@@ -29,6 +29,9 @@ check_result()
 {
     if [ "${1}" != "0" ]; then
         print_ko
+        if [ ! -z "${2}" ]; then
+            print_out "${RED}${2}${DEFAULT_COLOR}"
+        fi
     exit 1
     fi
 }
