@@ -90,6 +90,7 @@ init_commands()
     export DEBCONF_NONINTERACTIVE_SEEN=true
     export LC_ALL=C
     export CHROOT="chroot ${TARGET_DIR}"
+    export RUNLEVEL=1
 }
 
 create_rootfs()
