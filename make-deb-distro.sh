@@ -195,6 +195,10 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
     ${CHROOT} apt-get update
     check_result $?
 
+    # Upgrade already installed packages
+    ${CHROOT} apt-get upgrade -y
+    check_result $?
+
     # Install packages from repository. Will install only missing packages.
     if [ "" != "${PACKAGES}" ]; then
         ${CHROOT} apt-get install ${PACKAGES} -y
