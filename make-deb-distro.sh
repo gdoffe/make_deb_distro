@@ -181,7 +181,14 @@ apt_dpkg_work()
     # Generate /etc/apt/sources.list
     rm -f ${TARGET_DIR}/etc/apt/sources.list
     echo "deb $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS
-deb-src $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/sources.list
+deb $APT_MIRROR ${DISTRO_VERSION}-backports $APT_REPO_SECTIONS
+deb $APT_MIRROR ${DISTRO_VERSION}-updates $APT_REPO_SECTIONS
+deb $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS
+
+deb-src $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS
+deb-src $APT_MIRROR ${DISTRO_VERSION}-backports $APT_REPO_SECTIONS
+deb-src $APT_MIRROR ${DISTRO_VERSION}-updates $APT_REPO_SECTIONS
+deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/sources.list
     check_result $?
 
     # Update package list
@@ -207,9 +214,8 @@ deb-src $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/
         check_result $?
         for package in ${PACKAGES_DEB};
         do
-            #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -r $(${CHROOT} dpkg-deb -W --showformat '${Package}' /$(basename ${package}))
             ${CHROOT} dpkg -r $(${CHROOT} dpkg-deb -W --showformat '${Package}' /$(basename ${package}))
-            #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true LC_ALL=C ${CHROOT} dpkg -i /$(basename ${package})
+            check_result $?
             ${CHROOT} dpkg -i /$(basename ${package})
             check_result $?
             rm ${TARGET_DIR}/$(basename ${package})
