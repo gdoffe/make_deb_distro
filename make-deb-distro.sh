@@ -219,8 +219,6 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
         check_result $?
         for package in ${PACKAGES_DEB};
         do
-            ${CHROOT} dpkg -r $(${CHROOT} dpkg-deb -W --showformat '${Package}' /$(basename ${package}))
-            check_result $?
             ${CHROOT} dpkg -i /$(basename ${package})
             check_result $?
             rm ${TARGET_DIR}/$(basename ${package})
