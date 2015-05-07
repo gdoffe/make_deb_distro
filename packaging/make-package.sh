@@ -29,7 +29,7 @@ echo "/etc/make-deb-distro/profiles/default/default.conf
 /etc/make-deb-distro/profiles/read-only/read-only.conf" > ${PKGDIR}/DEBIAN/conffiles
 
 echo "Package: make-deb-distro
-Version: 0.1
+Version: 0.2
 Section: utils
 Priority: optional
 Architecture: all
