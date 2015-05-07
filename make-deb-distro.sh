@@ -192,6 +192,10 @@ deb-src $APT_MIRROR ${DISTRO_VERSION}-updates $APT_REPO_SECTIONS
 deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/sources.list
     check_result $?
 
+    # Repair potentially broken packages
+    ${CHROOT} dpkg --configure -a
+    check_result $?
+
     # Update package list
     ${CHROOT} apt-get update
     check_result $?
@@ -202,7 +206,7 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
 
     # Install packages from repository. Will install only missing packages.
     if [ "" != "${PACKAGES}" ]; then
-        ${CHROOT} apt-get install ${PACKAGES} -y
+        RUNLEVEL=1 ${CHROOT} apt-get install ${PACKAGES} -y
         check_result $?
     fi
 
@@ -225,6 +229,9 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
             check_result $?
         done
     fi
+
+    # Autoremove unused packages
+    ${CHROOT} apt-get autoremove --purge -y
 
     # Update all initrd in /boot
     ls -1 ${TARGET_DIR}/boot/vmlinuz*
