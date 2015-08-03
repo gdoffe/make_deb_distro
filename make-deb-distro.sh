@@ -95,28 +95,28 @@ init_commands()
 
 create_rootfs()
 {
-    print_noln "Create Rootfs ( may take a while... let's have a coffee ;) )"
-
-    # Build minimal rootfs
     if [ ! -d ${TARGET_DIR} ]; then
+        print_noln "Create Rootfs ( may take a while... let's have a coffee ;) )"
+        # Build minimal rootfs
         logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Build minimal rootfs"
-
-        if [ "" != "${APT_REPO_SECTIONS}" ]; then
-                components_option="--components=$(echo ${APT_REPO_SECTIONS} | tr ' ' ',')"
-        fi
-        if [ "" != "${PACKAGES}" ]; then
-                include_option="--include=$(echo ${PACKAGES} | tr ' ' ',')"
-        fi
-        if [ "" != "${PACKAGES_EXCLUDED}" ]; then
-                exclude_option="--exclude=$(echo ${PACKAGES_EXCLUDED} | tr ' ' ',')"
-        fi
-
-        qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DISTRO_VERSION} ${TARGET_DIR}
-        check_result $?
     else
-        logger -t "${SYSLOG_LABEL} ERROR" -p ${SYSLOG_SERVICE}.error -s "Target directory already exists but missing stamp file"
-        check_result -1
+        print_noln "Rootfs already exist but no stamp file, trying to fix ( may take a while... let's have a coffee ;) )"
+        # Broken rootfs, try to fix
+        logger -t "${SYSLOG_LABEL} WARNING" -p ${SYSLOG_SERVICE}.warning -s "Target directory already exists but missing stamp file"
     fi
+
+    if [ "" != "${APT_REPO_SECTIONS}" ]; then
+            components_option="--components=$(echo ${APT_REPO_SECTIONS} | tr ' ' ',')"
+    fi
+    if [ "" != "${PACKAGES}" ]; then
+            include_option="--include=$(echo ${PACKAGES} | tr ' ' ',')"
+    fi
+    if [ "" != "${PACKAGES_EXCLUDED}" ]; then
+            exclude_option="--exclude=$(echo ${PACKAGES_EXCLUDED} | tr ' ' ',')"
+    fi
+
+    qemu-debootstrap --arch ${ARCH} ${components_option} ${include_option} ${exclude_option} ${DISTRO_VERSION} ${TARGET_DIR}
+    check_result $?
 
     print_ok
 }
