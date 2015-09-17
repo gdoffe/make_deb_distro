@@ -1,4 +1,19 @@
-0.1 - 2013-11-24  Gilles DOFFE  <gdoffe+git@gmail.com>
+0.3 - 2015-09-17  Gilles DOFFE  <gdoffe@gmail.com>
+
+* Rearrange rootfs stamp file check to try to fix broken rootfs
+
+0.2 - 2015-05-07  Gilles DOFFE  <gdoffe@gmail.com>
+
+* Improved logger
+* Manage stamp file to avoid rootfs full rebuild
+* Enforce rootfs checking with distro name, version and architecture
+* Automatically upgrade installed packages
+* Add backports, updates and security repositories to target apt sources
+* Repair broken packages
+* Autoremove unused packages
+* Check that disk is an usb or mmc one
+
+0.1 - 2013-11-24  Gilles DOFFE  <gdoffe@gmail.com>
 
 * First release
 * Build a custom debian/ubuntu distribution
