@@ -1,0 +1,24 @@
+language: bash
+
+addons:
+  apt:
+    packages:
+    - realpath
+    - whois
+    - qemu-user-static
+    - qemu-system
+    - binfmt-support
+    - squashfs-tools
+    - extlinux
+    - mbr
+    - debootstrap
+
+# Package application before testing
+before_script:
+    - cd packaging
+    - sudo ./make-package.sh
+    - sudo dpkg -i make-deb-distro.deb
+
+# Test cases
+script:
+    - sudo make-deb-distro -f -a install
