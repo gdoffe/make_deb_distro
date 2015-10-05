@@ -25,7 +25,11 @@ before_script:
 
 # Test cases
 script:
+    # Default verbose install
+    - sudo make-deb-distro -v -f -a install
     # Default install
     - sudo make-deb-distro -f -a install
+    # Default verbose uninstall
+    - sudo make-deb-distro -v -f -a uninstall
     # Default uninstall
     - sudo make-deb-distro -f -a uninstall
