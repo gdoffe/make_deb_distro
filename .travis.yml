@@ -11,7 +11,7 @@ addons:
     - squashfs-tools
     - mbr
     - debootstrap
-    - extlinux
+    #- extlinux
 
 # Package application before testing
 before_script:
