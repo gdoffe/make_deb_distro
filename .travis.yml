@@ -21,4 +21,7 @@ before_script:
 
 # Test cases
 script:
+    # Default install
     - sudo make-deb-distro -f -a install
+    # Default uninstall
+    - sudo make-deb-distro -f -a uninstall
