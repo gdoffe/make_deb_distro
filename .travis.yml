@@ -9,16 +9,30 @@ addons:
     - qemu-system
     - binfmt-support
     - squashfs-tools
-    - extlinux
     - mbr
     - debootstrap
+    #- extlinux
 
 # Package application before testing
 before_script:
+    # Install packages refused in addons/apt
+    - sudo apt-get install extlinux
+    # Packaging
     - cd packaging
     - sudo ./make-package.sh
+    # Install package
     - sudo dpkg -i make-deb-distro.deb
 
 # Test cases
 script:
+    # Default verbose install
+    - sudo make-deb-distro -v -f -a install
+    - sleep 3
+    # Default verbose uninstall
+    - sudo make-deb-distro -v -f -a uninstall
+    - sleep 3
+    # Default install
     - sudo make-deb-distro -f -a install
+    - sleep 3
+    # Default uninstall
+    - sudo make-deb-distro -f -a uninstall
