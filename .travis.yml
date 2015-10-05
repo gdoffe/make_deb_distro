@@ -27,9 +27,12 @@ before_script:
 script:
     # Default verbose install
     - sudo make-deb-distro -v -f -a install
-    # Default install
-    - sudo make-deb-distro -f -a install
+    - sleep 3
     # Default verbose uninstall
     - sudo make-deb-distro -v -f -a uninstall
+    - sleep 3
+    # Default install
+    - sudo make-deb-distro -f -a install
+    - sleep 3
     # Default uninstall
     - sudo make-deb-distro -f -a uninstall
