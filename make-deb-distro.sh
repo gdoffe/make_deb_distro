@@ -90,7 +90,6 @@ init_commands()
     export DEBCONF_NONINTERACTIVE_SEEN=true
     export LC_ALL=C
     export CHROOT="chroot ${TARGET_DIR}"
-    export RUNLEVEL=1
 }
 
 create_rootfs()
@@ -114,6 +113,13 @@ create_rootfs()
 prepare_rootfs()
 {
     print_noln "Prepare rootfs"
+
+    # Change policy to not start daemons
+    echo "#!/bin/sh
+exit 101" > ${TARGET_DIR}/usr/sbin/policy-rc.d
+    check_result $?
+    chmod a+x ${TARGET_DIR}/usr/sbin/policy-rc.d
+    check_result $?
 
     # Mount proc and sys and pts
     logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Mount /proc"
@@ -153,6 +159,10 @@ clean_rootfs()
 
     # Delete temporary files
     rm ${TARGET_DIR}/tmp/* -Rf
+    check_result $?
+
+    # Change policy to allow daemons to start
+    rm -f ${TARGET_DIR}/usr/sbin/policy-rc.d
     check_result $?
 
     print_ok
@@ -196,7 +206,7 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
 
     # Install packages from repository. Will install only missing packages.
     if [ "" != "${PACKAGES}" ]; then
-        RUNLEVEL=1 ${CHROOT} apt-get install ${PACKAGES} -y
+        ${CHROOT} apt-get install ${PACKAGES} -y
         check_result $?
     fi
 
