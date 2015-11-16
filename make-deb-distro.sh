@@ -200,13 +200,32 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
     ${CHROOT} apt-get update
     check_result $?
 
+    # Install packages from .deb
+    if [ "" != "${PACKAGES_DEB}" ]; then
+        logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Install other debian packages"
+        # Clean previous .deb packages
+        rm ${TARGET_DIR}/*.deb -f
+        check_result $?
+        cp ${PACKAGES_DEB} ${TARGET_DIR}/
+        check_result $?
+        for package in ${PACKAGES_DEB}; do
+            # Dependencies could be missing so do not check dpkg return but check apt result
+            ${CHROOT} dpkg -i /$(basename $package)
+            ${CHROOT} apt-get install -y -f
+            check_result $?
+            # If all is ok, remove .deb package
+            rm ${TARGET_DIR}/$(basename $package) -f
+        done
+        check_result $?
+    fi
+
     # Upgrade already installed packages
     ${CHROOT} apt-get upgrade -y
     check_result $?
 
     # Install packages from repository. Will install only missing packages.
     if [ "" != "${PACKAGES}" ]; then
-        ${CHROOT} apt-get install ${PACKAGES} -y
+        ${CHROOT} apt-get install ${PACKAGES} -y -f
         check_result $?
     fi
 
@@ -214,20 +233,6 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
     if [ "" != "${PACKAGES_EXCLUDED}" ]; then
         ${CHROOT} apt-get purge ${PACKAGES_EXCLUDED} -y
         check_result $?
-    fi
-
-    # Install packages from .deb
-    if [ "" != "${PACKAGES_DEB}" ]; then
-        logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Install other debian packages"
-        cp ${PACKAGES_DEB} ${TARGET_DIR}/
-        check_result $?
-        for package in ${PACKAGES_DEB};
-        do
-            ${CHROOT} dpkg -i /$(basename ${package})
-            check_result $?
-            rm ${TARGET_DIR}/$(basename ${package})
-            check_result $?
-        done
     fi
 
     # Autoremove unused packages
