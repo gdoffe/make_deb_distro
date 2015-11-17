@@ -61,6 +61,9 @@ init()
     APT_REPO_BRANCH=${DISTRO_VERSION}
     
     APT_REPO_SECTIONS="main"
+
+    # Skip package upgrade if different of 0.
+    APT_SKIP_UPGRADE=0
     
     # Display variables
     COLUMNS=$(tput cols)
@@ -220,8 +223,10 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
     fi
 
     # Upgrade already installed packages
-    ${CHROOT} apt-get upgrade -y
-    check_result $?
+    if [ "${APT_SKIP_UPGRADE}" = "0" ]; then
+        ${CHROOT} apt-get upgrade -y
+        check_result $?
+    fi
 
     # Install packages from repository. Will install only missing packages.
     if [ "" != "${PACKAGES}" ]; then
@@ -236,7 +241,9 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
     fi
 
     # Autoremove unused packages
-    ${CHROOT} apt-get autoremove --purge -y
+    if [ "${APT_SKIP_UPGRADE}" = "0" ]; then
+        ${CHROOT} apt-get autoremove --purge -y
+    fi
 
     # Update all initrd in /boot
     ls -1 ${TARGET_DIR}/boot/vmlinuz*
@@ -386,6 +393,7 @@ Options:
                                                          (${DEFAULT_SCRIPT_PREPARE} by default)
         (--script-burn)          <script>                Launch your script to burn rootfs on target device.
                                                          (${DEFAULT_SCRIPT_BURN} by default)
+        (-s|--skip-upgrade)                              Skip package upgrade and autoremoval of unused packages
         (-t|--target)            <target>                Target achitecture (same as host by default).
         (-v|--verbose)                                   Verbose mode
         "
@@ -393,7 +401,7 @@ Options:
 
 parse_options()
 {
-    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:N:o:p:t:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,distro-version,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
+    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:N:o:p:st:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,distro-version,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,skip-upgrade,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
 
     #Bad arguments
     if [ $? -ne 0 ]; then
@@ -480,6 +488,11 @@ parse_options()
             --script-burn)
                 SCRIPT_BURN=$2
                 shift 2
+                ;;
+
+            -s|--skip-upgrade)
+                APT_SKIP_UPGRADE=1
+                shift
                 ;;
 
             -t|--target)
