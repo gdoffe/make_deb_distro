@@ -289,6 +289,24 @@ umount_image()
     print_ok
 }
 
+do_chroot()
+{
+    # Prepare rootfs
+    prepare_rootfs
+
+    # Change root
+    reset_output
+    ${CHROOT}
+    check_result $? "${TARGET_DIR} not found. Have you perform an install before chroot ?"
+    init_output
+
+    # Clean chroot environment
+    clean_rootfs
+
+    # Umount all
+    umount_all_in_rootfs
+}
+
 generate_distro()
 {
     # Create rootfs
@@ -572,14 +590,7 @@ else
     export ROOTFS_DEVICE=${TARGET_DEVICE}2
 fi
 
-# If verbose, display command output
-if [ "${VERBOSE}" = "0" ]; then
-    exec 6>&1
-    exec 7>&2
-
-    exec 1>${TARGET_DIR%/}.log
-    exec 2>&1
-fi
+init_output
 
 print_out "Starting. Please wait..."
 
@@ -590,6 +601,9 @@ if [ "uninstall" = "${action}" ]; then
 elif [ "install" = "${action}" ]; then
     trap    "umount_all_in_rootfs;umount_image"        EXIT
     generate_distro
+    exit 0
+elif [ "chroot" = "${action}" ]; then
+    do_chroot
     exit 0
 else
     print_out "Wrong action or bad one. Check -a option. Exiting."

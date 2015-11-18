@@ -36,6 +36,26 @@ check_result()
     fi
 }
 
+init_output()
+{
+    # If verbose, display command output
+    if [ "${VERBOSE}" = "0" ]; then
+        exec 6>&1
+        exec 7>&2
+
+        exec 1>${TARGET_DIR%/}.log
+        exec 2>&1
+    fi
+}
+
+reset_output()
+{
+    if [ "${VERBOSE}" = "0" ]; then
+        exec 1>&6 6>&-
+        exec 2>&7 7>&-
+    fi
+}
+
 print_noln()
 {
     if [ "${VERBOSE}" = "0" ]; then
