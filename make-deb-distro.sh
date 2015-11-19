@@ -344,10 +344,10 @@ generate_distro()
     # Clean chroot environment
     clean_rootfs
  
-    # Umount all
-    umount_all_in_rootfs
-
     if [ "${ONLY_ROOTFS}" = "0" ]; then
+        # Umount all
+        umount_all_in_rootfs
+
         # Execute script to prepare target
         print_noln "Execute '${SCRIPT_PREPARE}' script"
         bash ${SCRIPT_PREPARE}
