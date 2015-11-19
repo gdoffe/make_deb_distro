@@ -35,6 +35,9 @@ init()
     # Only do debootstrap and dpkg work if different of 0.
     ONLY_ROOTFS=0
 
+    # Debootstrap variant
+    DEBOOTSTRAP_VARIANT=
+
     # Target roots filesystem
     export TARGET_DIR="${PWD}/../targetdir"
 
@@ -107,8 +110,11 @@ create_rootfs()
         logger -t "${SYSLOG_LABEL} WARNING" -p ${SYSLOG_SERVICE}.warning -s "Target directory already exists but missing stamp file"
     fi
 
-    qemu-debootstrap --arch ${ARCH} ${DISTRO_VERSION} ${TARGET_DIR}
-    check_result $?
+    if [ "" != "${DEBOOTSTRAP_VARIANT}" ]; then
+        debootstrap_opt="--variant ${DEBOOTSTRAP_VARIANT}"
+    fi
+    qemu-debootstrap --arch ${ARCH} ${debootstrap_opt} ${DISTRO_VERSION} ${TARGET_DIR}
+    check_result $? "Debootstrap failed. Check architecture, distribution version, debootstrap variant and target directory."
 
     print_ok
 }
@@ -116,6 +122,9 @@ create_rootfs()
 prepare_rootfs()
 {
     print_noln "Prepare rootfs"
+
+    ls ${TARGET_DIR} 2>/dev/null
+    check_result $? "Rootfs ${TARGET_DIR} does not exist. Have you perform 'install' action ?"
 
     # Change policy to not start daemons
     echo "#!/bin/sh
@@ -413,13 +422,14 @@ Options:
                                                          (${DEFAULT_SCRIPT_BURN} by default)
         (-s|--skip-upgrade)                              Skip package upgrade and autoremoval of unused packages
         (-t|--target)            <target>                Target achitecture (same as host by default).
+        (--variant)              <variant>               Debootstrap variant (see debootstrap man page)
         (-v|--verbose)                                   Verbose mode
         "
 }
 
 parse_options()
 {
-    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:N:o:p:st:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,distro-version,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,skip-upgrade,target:,target-device:,target-dir:,verbose" -n "make_distro.sh" -- "$@")
+    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:N:o:p:st:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,distro-version,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,skip-upgrade,target:,target-device:,target-dir:,variant:,verbose" -n "make_distro.sh" -- "$@")
 
     #Bad arguments
     if [ $? -ne 0 ]; then
@@ -515,6 +525,11 @@ parse_options()
 
             -t|--target)
                 ARCH=$2
+                shift 2
+                ;;
+
+            --variant)
+                DEBOOTSTRAP_VARIANT=$2
                 shift 2
                 ;;
 
