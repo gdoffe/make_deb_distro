@@ -306,9 +306,6 @@ do_chroot()
 
     # Clean chroot environment
     clean_rootfs
-
-    # Umount all
-    umount_all_in_rootfs
 }
 
 generate_distro()
@@ -347,6 +344,8 @@ generate_distro()
     if [ "${ONLY_ROOTFS}" = "0" ]; then
         # Umount all
         umount_all_in_rootfs
+        # As all is already unmounted, no need to umount on exit
+        trap - EXIT
 
         # Execute script to prepare target
         print_noln "Execute '${SCRIPT_PREPARE}' script"
@@ -600,6 +599,7 @@ elif [ "install" = "${action}" ]; then
     generate_distro
     exit 0
 elif [ "chroot" = "${action}" ]; then
+    trap    trap_exit        EXIT
     do_chroot
     exit 0
 else
