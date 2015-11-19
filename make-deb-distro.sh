@@ -101,7 +101,6 @@ init_commands()
 trap_exit()
 {
     umount_all_in_rootfs
-    umount_image
 }
 
 trap_int()
@@ -294,18 +293,6 @@ umount_all_in_rootfs()
     print_ok
 }
 
-umount_image()
-{
-    print_noln "Umount image directory"
-
-    if mount | grep ${TARGET_DIR}_image > /dev/null; then
-        umount ${TARGET_DIR}_image
-        check_result $?
-    fi
-
-    print_ok
-}
-
 do_chroot()
 {
     # Prepare rootfs
@@ -381,23 +368,9 @@ uninstall()
         # Umount all
         umount_all_in_rootfs
     
-        umount_image
-    
         # Delete all
         print_noln "Delete ${TARGET_DIR}"
         rm ${TARGET_DIR} -Rf
-        check_result $?
-        print_ok
-    fi
-    if [[ -d ${TARGET_DIR}_image ]]; then
-        print_noln "Delete ${TARGET_DIR}_image"
-        rm ${TARGET_DIR}_image -Rf
-        check_result $?
-        print_ok
-    fi
-    if [[ -f ${TARGET_DIR} ]]; then
-        print_noln "Delete ${TARGET_DIR}_loop"
-        rm ${TARGET_DIR}_loop
         check_result $?
         print_ok
     fi
