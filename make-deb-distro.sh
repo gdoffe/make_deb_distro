@@ -98,6 +98,21 @@ init_commands()
     export CHROOT="chroot ${TARGET_DIR}"
 }
 
+trap_exit()
+{
+    umount_all_in_rootfs
+    umount_image
+}
+
+trap_int()
+{
+    trap "" INT EXIT
+    print_ko
+    trap_exit
+
+    exit 2
+}
+
 create_rootfs()
 {
     if [ ! -d ${TARGET_DIR} ]; then
@@ -270,16 +285,9 @@ umount_all_in_rootfs()
 
     sync
 
-    # Umount all filesystems mounted in the chroot environment
-    if [ "" != "$(${CHROOT} mount | grep /dev/pts)" ]; then
-        umount ${TARGET_DIR}/dev/pts
-    fi
-    if [ "" != "$(${CHROOT} mount | grep /proc)" ]; then
-        umount ${TARGET_DIR}/proc
-    fi
-    if [ "" != "$(${CHROOT} mount | grep /sys)" ]; then
-        umount ${TARGET_DIR}/sys
-    fi
+    umount -f ${TARGET_DIR}/dev/pts
+    umount -f ${TARGET_DIR}/proc
+    umount -f ${TARGET_DIR}/sys
 
     echo "" > ${TARGET_DIR}/etc/mtab
 
@@ -614,7 +622,8 @@ if [ "uninstall" = "${action}" ]; then
     uninstall
     exit 0
 elif [ "install" = "${action}" ]; then
-    trap    "umount_all_in_rootfs;umount_image"        EXIT
+    trap    trap_int         INT
+    trap    trap_exit        EXIT
     generate_distro
     exit 0
 elif [ "chroot" = "${action}" ]; then
