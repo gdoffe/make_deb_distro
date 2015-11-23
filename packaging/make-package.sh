@@ -1,15 +1,17 @@
-# Chack we are root
+# Check we are root
 if [ $(id -u) != "0" ]; then
     echo "Error: Must be root to launch this script." > /dev/stderr
     exit 1
 fi
+
+VERSION=0.4
 
 # Delete all deb files
 rm -f *.deb
 
 # Create your scripts source dir
 SRCDIR=../
-PKGDIR=make-deb-distro
+PKGDIR=make-deb-distro-${VERSION}
 rm -Rf ${PKGDIR}
 mkdir -p ${PKGDIR}/DEBIAN
 
@@ -29,7 +31,7 @@ echo "/etc/make-deb-distro/profiles/default/default.conf
 /etc/make-deb-distro/profiles/read-only/read-only.conf" > ${PKGDIR}/DEBIAN/conffiles
 
 echo "Package: make-deb-distro
-Version: 0.3
+Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: all
