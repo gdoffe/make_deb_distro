@@ -1,3 +1,14 @@
+0.4 - 2015-12-01  Gilles DOFFE  <gdoffe@gmail.com>
+
+* Add chroot action to debug rootfs
+* Add --variant option to force debootstrap variant
+* Add -s|--skip-upgrade option to skip package upgrade
+* Add dependencies resolution for .deb package
+* Remove useless read-only functions
+* Improve umount process when exiting
+* Prevent daemons to start with policy (systemd/upstart compatibility)
+* fixes #2 : Only install additional packages with apt
+
 0.3 - 2015-09-17  Gilles DOFFE  <gdoffe@gmail.com>
 
 * Rearrange rootfs stamp file check to try to fix broken rootfs
