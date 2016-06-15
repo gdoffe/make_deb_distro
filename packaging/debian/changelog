@@ -1,0 +1,44 @@
+make-deb-distro (0.4) experimental; urgency=medium
+
+  * Add chroot action to debug rootfs
+  * Add --variant option to force debootstrap variant
+  * Add -s|--skip-upgrade option to skip package upgrade
+  * Add dependencies resolution for .deb package
+  * Remove useless read-only functions
+  * Improve umount process when exiting
+  * Prevent daemons to start with policy (systemd/upstart compatibility)
+  * fixes #2 : Only install additional packages with apt
+
+ -- Gilles DOFFE <g.doffe@gmail.com>  Tue, 01 Dec 2015 00:00:00 +0200
+
+make-deb-distro (0.3) experimental; urgency=medium
+
+  * Rearrange rootfs stamp file check to try to fix broken rootfs
+
+ -- Gilles DOFFE <g.doffe@gmail.com>  Thu, 17 Sep 2015 00:00:00 +0200
+
+make-deb-distro (0.2) experimental; urgency=medium
+
+  * Improved logger
+  * Manage stamp file to avoid rootfs full rebuild
+  * Enforce rootfs checking with distro name, version and architecture
+  * Automatically upgrade installed packages
+  * Add backports, updates and security repositories to target apt sources
+  * Repair broken packages
+  * Autoremove unused packages
+  * Check that disk is an usb or mmc one
+
+ -- Gilles DOFFE <g.doffe@gmail.com>  Sat, 07 May 2015 00:00:00 +0200
+
+make-deb-distro (0.1) experimental; urgency=medium
+
+  * First release
+  * Build a custom debian/ubuntu distribution
+  * User can choose debian/ubuntu version
+  * Package selection (apt or .deb)
+  * Support all architecture supported by debian/ubuntu
+  * Personnal customization can be done through scripts
+  * Write your own profile configuration file
+  * Default profile delivered for x86/x86_64 architecture
+
+ -- Gilles DOFFE <g.doffe@gmail.com>  Sun, 24 Nov 2013 00:00:00 +0200
