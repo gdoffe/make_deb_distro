@@ -1,0 +1,92 @@
+#!/bin/bash
+
+# Name
+PACKAGE_NAME=make-deb-distro
+# Maintainer
+PACKAGE_MAINTAINER="Gilles DOFFE <g.doffe@gmail.com>"
+# Description
+PACKAGE_DESCRIPTION="Make your customized ubuntu/debian."
+PACKAGE_EXTENDED_DESC="Make your customized ubuntu/debian distribution for any target."
+# Dependencies
+PACKAGE_DEPENDENCIES="realpath,whois,qemu-user-static,qemu-system,binfmt-support,squashfs-tools,extlinux,mbr,debootstrap"
+# Debian architecture
+PACKAGE_ARCHITECTURE=all
+# dpkg section
+PACKAGE_SECTION=utils
+# Priority
+PACKAGE_PRIORITY=optional
+# Distribution
+PACKAGE_DISTRIBUTION=unstable
+# First release in changelog
+FIRST_RELEASE=0.1.0
+
+DIRS_FILES_TO_IGNORE="changelog packaging _BUILD .svn .git README*"
+
+# Check we are root
+#if [ $(id -u) != "0" ]; then
+#    echo "Error: Must be root to launch this script." > /dev/stderr
+#    exit 1
+#fi
+
+# Delete all deb files
+rm -f *.deb
+
+# Create your scripts source dir
+SRCDIR=$(readlink -f $(dirname $0)/..)
+PKGDIR=${SRCDIR}/_BUILD/${PACKAGE_NAME}
+
+# Delete packaging directory and prepare it
+rm -Rf ${PKGDIR}
+mkdir -p ${PKGDIR}/debian
+
+# Copy all from source directory except 'scripts' and '_BUILD' directories
+for pattern in $DIRS_FILES_TO_IGNORE; do
+    to_exclude="$to_exclude --exclude $pattern"
+done
+
+# Copy package files
+(cd ${PKGDIR} && tar $to_exclude -C ${SRCDIR} -cf - . | tar xf - )
+
+# Exclude debian repository from package to install
+ls $PKGDIR > ${PKGDIR}/debian/install
+sed '/^debian$/d' -i ${PKGDIR}/debian/install
+
+# Debhelper version
+echo 9 > ${PKGDIR}/debian/compat
+
+# debian/rules
+echo "#!/usr/bin/make -f
+
+%:
+	dh \$@" > ${PKGDIR}/debian/rules
+
+echo "Source: ${PACKAGE_NAME}
+Section: ${PACKAGE_SECTION}
+Build-Depends: ${PACKAGE_DEPENDENCIES}, debhelper(>=9)
+Standards-Version: 3.9.5
+Maintainer: ${PACKAGE_MAINTAINER}
+
+Package: ${PACKAGE_NAME}
+Priority: ${PACKAGE_PRIORITY}
+Section: ${PACKAGE_SECTION}
+Architecture: ${PACKAGE_ARCHITECTURE}
+Description: ${PACKAGE_DESCRIPTION}
+ ${PACKAGE_EXTENDED_DESC}
+Depends: ${PACKAGE_DEPENDENCIES}, \${misc:Depends}" > ${PKGDIR}/debian/control
+
+if [ ! -f ${SRCDIR}/packaging/debian/changelog ]; then
+    DEBEMAIL="${PACKAGE_MAINTAINER}" dch --create --distribution ${PACKAGE_DISTRIBUTION} --package ${PACKAGE_NAME} --newversion ${FIRST_RELEASE} Initial Release
+    DEBEMAIL="${PACKAGE_MAINTAINER}" dch -e
+else
+    cp  ${SRCDIR}/packaging/debian/changelog ${PKGDIR}/debian/changelog -vf
+    (cd ${PKGDIR}/ && DEBEMAIL="${PACKAGE_MAINTAINER}" dch --distribution ${PACKAGE_DISTRIBUTION} --package ${PACKAGE_NAME} -i)
+    if [ "$?" == "0" ]; then
+        cp ${PKGDIR}/debian/changelog ${SRCDIR}/packaging/debian/changelog -vf
+    fi
+fi
+
+
+cp ${SRCDIR}/packaging/debian ${PKGDIR}/ -Rf
+
+# Launch the package build
+(cd ${PKGDIR} && debuild -us -uc --lintian-opts --profile debian)
