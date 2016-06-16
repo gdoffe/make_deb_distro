@@ -570,21 +570,6 @@ case ${DISTRO_NAME} in
         ;;
 esac
 
-# Check target device
-if [ ${ONLY_ROOTFS} = "0" ] && ( [ -z ${TARGET_DEVICE} ] || [ ! -b ${TARGET_DEVICE} ] ); then
-    echo "Error : Target device does not exist or not set..."
-    exit 2
-fi
-
-# Select partition
-if [ "$(echo ${TARGET_DEVICE} | grep '.*[0-9]$')" != "" ]; then
-    export VFAT_DEVICE=${TARGET_DEVICE}p1
-    export ROOTFS_DEVICE=${TARGET_DEVICE}p2
-else
-    export VFAT_DEVICE=${TARGET_DEVICE}1
-    export ROOTFS_DEVICE=${TARGET_DEVICE}2
-fi
-
 init_output
 
 print_out "Starting. Please wait..."
@@ -596,6 +581,22 @@ if [ "uninstall" = "${action}" ]; then
 elif [ "install" = "${action}" ]; then
     trap    trap_int         INT
     trap    trap_exit        EXIT
+
+    # Check target device
+    if [ "${ONLY_ROOTFS}" = "0" ] && ( [ -z ${TARGET_DEVICE} ] || [ ! -b ${TARGET_DEVICE} ] ); then
+        check_result 1 "Error : Target device does not exist or not set..."
+        exit 2
+    fi
+    
+    # Select partition
+    if [ "$(echo ${TARGET_DEVICE} | grep '.*[0-9]$')" != "" ]; then
+        export VFAT_DEVICE=${TARGET_DEVICE}p1
+        export ROOTFS_DEVICE=${TARGET_DEVICE}p2
+    else
+        export VFAT_DEVICE=${TARGET_DEVICE}1
+        export ROOTFS_DEVICE=${TARGET_DEVICE}2
+    fi
+
     generate_distro
     exit 0
 elif [ "chroot" = "${action}" ]; then
