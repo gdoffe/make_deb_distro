@@ -194,16 +194,9 @@ clean_rootfs()
     print_ok
 }
 
-apt_dpkg_work()
+apt_dpkg_init()
 {
-    print_noln "Install packages ( may take a while... let's have an other coffee ^^)"
-
-    # Set apt proxy
-    if [ "" != "${APT_HTTP_PROXY}" ]; then
-    logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Set apt proxy"
-        echo "Acquire::http::proxy \"${APT_HTTP_PROXY}\";" >> ${TARGET_DIR}/etc/apt/apt.conf
-        check_result $?
-    fi
+    print_noln "Initialize APT package manager"
 
     # Generate /etc/apt/sources.list
     rm -f ${TARGET_DIR}/etc/apt/sources.list
@@ -218,13 +211,33 @@ deb-src $APT_MIRROR ${DISTRO_VERSION}-updates $APT_REPO_SECTIONS
 deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/sources.list
     check_result $?
 
+    # Update package list
+    ${CHROOT} apt-get update
+    check_result $?
+
+    print_ok
+}
+
+apt_dpkg_work()
+{
+    print_noln "Install packages ( may take a while... let's have an other coffee ^^)"
+
+    # Set apt proxy
+    if [ "" != "${APT_HTTP_PROXY}" ]; then
+    logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Set apt proxy"
+        echo "Acquire::http::proxy \"${APT_HTTP_PROXY}\";" >> ${TARGET_DIR}/etc/apt/apt.conf.d/proxy
+        check_result $?
+    fi
+
     # Repair potentially broken packages
     ${CHROOT} dpkg --configure -a
     check_result $?
 
     # Update package list
-    ${CHROOT} apt-get update
-    check_result $?
+    if [ "${APT_SKIP_UPGRADE}" = "0" ]; then
+        ${CHROOT} apt-get update
+        check_result $?
+    fi
 
     # Install packages from .deb
     if [ "" != "${PACKAGES_DEB}" ]; then
@@ -252,7 +265,14 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
     fi
 
     # Install packages from repository. Will install only missing packages.
-    if [ "" != "${PACKAGES}" ]; then
+    must_install=0
+    for package in ${PACKAGES}; do
+        dpkg --list "${package}" | grep -q "^ii"
+        if [ "$?" != "0" ]; then
+            must_install=1
+        fi
+    done
+    if [ "" != "${PACKAGES}" ] && [ "${must_install}" = "1"  ]; then
         ${CHROOT} apt-get install ${PACKAGES} -y -f
         check_result $?
     fi
@@ -313,6 +333,7 @@ generate_distro()
     # Create rootfs
     if [ ! -f ${TARGET_DIR}/.stamp_rootfs ]; then
         create_rootfs
+        apt_dpkg_init
         echo ${DISTRO_NAME}_${DISTRO_VERSION}_${ARCH} > ${TARGET_DIR}/.stamp_rootfs
     else
         print_noln "Rootfs already exist, creation skipped"
