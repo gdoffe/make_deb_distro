@@ -137,7 +137,7 @@ prepare_rootfs()
 {
     print_noln "Prepare rootfs"
 
-    ls ${TARGET_DIR} 2>/dev/null
+    ls ${TARGET_DIR} >/dev/null 2>/dev/null
     check_result $? "Rootfs ${TARGET_DIR} does not exist. Have you perform 'install' action ?"
 
     # Change policy to not start daemons
@@ -269,7 +269,7 @@ deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_D
     fi
 
     # Update all initrd in /boot
-    ls -1 ${TARGET_DIR}/boot/vmlinuz*
+    ls -1 ${TARGET_DIR}/boot/vmlinuz* >/dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
         ${CHROOT} update-initramfs -c -k all
         check_result $?
