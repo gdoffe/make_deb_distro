@@ -19,6 +19,8 @@ PACKAGE_PRIORITY=optional
 PACKAGE_DISTRIBUTION=unstable
 # First release in changelog
 FIRST_RELEASE=0.1.0
+# Man page section
+MAN_SECTION=1
 
 DIRS_FILES_TO_IGNORE="changelog packaging _BUILD .svn .git README*"
 
@@ -33,7 +35,8 @@ rm -f *.deb
 
 # Create your scripts source dir
 SRCDIR=$(readlink -f $(dirname $0)/..)
-PKGDIR=${SRCDIR}/_BUILD/${PACKAGE_NAME}
+BLDDIR=${SRCDIR}/_BUILD
+PKGDIR=${BLDDIR}/${PACKAGE_NAME}
 
 # Delete packaging directory and prepare it
 rm -Rf ${PKGDIR}
@@ -87,6 +90,19 @@ fi
 
 
 cp ${SRCDIR}/packaging/debian ${PKGDIR}/ -Rf
+
+rm -f ${PKGDIR}/debian/${PACKAGE_NAME}.manpages
+rm -f ${PKGDIR}/debian/${PACKAGE_NAME}.${MAN_SECTION}
+echo "[authors]
+.B ${PACKAGE_NAME}
+was written by ${PACKAGE_MAINTAINER}." > ${BLDDIR}/authors.maninc
+
+for file in $(ls -d ${PKGDIR}/usr/bin/*); do
+    version=$(head -1 ${PKGDIR}/debian/changelog | cut -d';' -f1)
+    help2man --no-info --version-string="${version}" --section=${MAN_SECTION} --include=${BLDDIR}/authors.maninc \
+        --name="${PACKAGE_DESCRIPTION}" -o ${PKGDIR}/debian/$(basename ${file}).${MAN_SECTION} ${file}
+    echo "debian/$(basename ${file}).${MAN_SECTION}" >> ${PKGDIR}/debian/${PACKAGE_NAME}.manpages
+done
 
 # Launch the package build
 (cd ${PKGDIR} && debuild -us -uc --lintian-opts --profile debian)
