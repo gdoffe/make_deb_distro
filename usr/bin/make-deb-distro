@@ -25,6 +25,7 @@
 # Include generic functions
 export INCLUDE_DIR=/usr/share/make-deb-distro/scripts/include
 . ${INCLUDE_DIR}/functions.sh
+MDD_CHANGELOG_FILE=/usr/share/doc/make-deb-distro/changelog.gz
 
 # Init all script variables
 init()
@@ -402,6 +403,15 @@ uninstall()
     print_ok
 }
 
+print_version()
+{
+    if [ -f ${MDD_CHANGELOG_FILE} ]; then
+        zless ${MDD_CHANGELOG_FILE} | head -1 | cut -d';' -f1
+    else
+        echo "Unknown version"
+    fi
+}
+
 print_usage()
 {
     echo "This script build custom Ubuntu/Debian distributions.
@@ -421,19 +431,18 @@ Options:
         (-p|--packages)          \"<packages>\"            Distro packages to use. List must be quoted.
         (--script-rootfs)        <script>                Launch your script after rootfs is created and all package installed.
         (--script-prepare)       <script>                Launch your script to prepare the target device.
-                                                         (${DEFAULT_MDD_SCRIPT_PREPARE} by default)
         (--script-burn)          <script>                Launch your script to burn rootfs on target device.
-                                                         (${DEFAULT_MDD_SCRIPT_BURN} by default)
         (-s|--skip-upgrade)                              Skip package upgrade and autoremoval of unused packages
         (-t|--target)            <target>                Target achitecture (same as host by default).
         (--variant)              <variant>               Debootstrap variant (see debootstrap man page)
         (-v|--verbose)                                   Verbose mode
+        (--version)                                      Print version
         "
 }
 
 parse_options()
 {
-    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:N:o:p:st:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,distro-version,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,skip-upgrade,target:,target-device:,target-dir:,variant:,verbose" -n "make_distro.sh" -- "$@")
+    ARGS=$(getopt -o "a:b:c:d:e:fhk:n:N:o:p:st:u:vw" -l "action:,configuration:,deb-packages:,device:,distro-name:,distro-version,excluded-packages:,help,only-rootfs,packages:,script-prepare:,script-rootfs:,script-burn:,skip-upgrade,target:,target-device:,target-dir:,variant:,verbose,version" -n "make_distro.sh" -- "$@")
 
     #Bad arguments
     if [ $? -ne 0 ]; then
@@ -539,6 +548,12 @@ parse_options()
 
             -v|--verbose)
                 MDD_VERBOSE=1
+                shift
+                ;;
+
+            --version)
+                print_version
+                exit 0
                 shift
                 ;;
 
