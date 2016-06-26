@@ -39,18 +39,18 @@ check_result()
 init_output()
 {
     # If verbose, display command output
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         exec 6>&1
         exec 7>&2
 
-        exec 1>${TARGET_DIR%/}.log
+        exec 1>${MDD_TARGET_DIR%/}.log
         exec 2>&1
     fi
 }
 
 reset_output()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         exec 1>&6 6>&-
         exec 2>&7 7>&-
     fi
@@ -58,7 +58,7 @@ reset_output()
 
 print_noln()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         print_noln_ "${*}" &
         wait $!
         string="${*}"
@@ -68,7 +68,7 @@ print_noln()
 
 print_noln_()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         exec 1>&6 6>&-
     fi
     printf "${*}"
@@ -82,7 +82,7 @@ print_out()
 
 print_out_()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         exec 1>&6 6>&-
     fi
     echo  "${*}"
@@ -90,7 +90,7 @@ print_out_()
 
 print_ok()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         shift
         print_ok_ &
         wait $!
@@ -99,7 +99,7 @@ print_ok()
 
 print_ko()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         shift
         print_ko_ &
         wait $!
@@ -108,7 +108,7 @@ print_ko()
 
 print_warn()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         shift
         print_warn_ &
         wait $!
@@ -117,7 +117,7 @@ print_warn()
 
 print_ok_()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         exec 1>&6 6>&-
     fi
     column=$((COLUMNS - str_size))
@@ -126,7 +126,7 @@ print_ok_()
 
 print_ko_()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         exec 1>&6 6>&-
     fi
     column=$((COLUMNS - str_size))
@@ -135,7 +135,7 @@ print_ko_()
 
 print_warn_()
 {
-    if [ "${VERBOSE}" = "0" ]; then
+    if [ "${MDD_VERBOSE}" = "0" ]; then
         exec 1>&6 6>&-
     fi
     column=$((COLUMNS - str_size))

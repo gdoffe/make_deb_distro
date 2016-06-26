@@ -29,64 +29,67 @@ export INCLUDE_DIR=/usr/share/make-deb-distro/scripts/include
 # Init all script variables
 init()
 {
+    # Export all variable by default
+    set -a
+
     # Script is verbose if different of 0.
-    VERBOSE=0
+    MDD_VERBOSE=0
 
     # Only do debootstrap and dpkg work if different of 0.
-    ONLY_ROOTFS=0
+    MDD_ONLY_ROOTFS=0
 
     # Debootstrap variant
-    DEBOOTSTRAP_VARIANT=
+    MDD_DEBOOTSTRAP_VARIANT=
 
     # Target roots filesystem
-    export TARGET_DIR="${PWD}/../targetdir"
+    export MDD_TARGET_DIR="${PWD}/../targetdir"
 
     # Target device
-    export TARGET_DEVICE=
-    
+    export MDD_TARGET_DEVICE=
+
     # Target architecture
-    ARCH=$(dpkg --print-architecture)
-    
+    MDD_ARCH=$(dpkg --print-architecture)
+
     # Debian-like distribution
-    DISTRO_NAME=$(lsb_release -i | cut -d ':' -f2 | tr -d '\t' | tr 'A-Z' 'a-z')
-    
+    MDD_DISTRO_NAME=$(lsb_release -i | cut -d ':' -f2 | tr -d '\t' | tr 'A-Z' 'a-z')
+
     # Debian-like version
-    DISTRO_VERSION=$(lsb_release -c | cut -d ':' -f2 | tr -d '\t')
-    
+    MDD_DISTRO_VERSION=$(lsb_release -c | cut -d ':' -f2 | tr -d '\t')
+
     # Partition label
-    export PARTITION_LABEL=${RANDOM}
-    
+    MDD_ROOTFS_PARTITION_LABEL=${RANDOM}
+
     # Apt options
     #APT_INSTALL_OPTIONS="--no-install-recommends"
     # HTTP proxy for apt
-    #APT_HTTP_PROXY="http://<USERNAME>:<PASSWORD>@<IP>:<PORT>/"
+    #MDD_APT_HTTP_PROXY="http://<USERNAME>:<PASSWORD>@<IP>:<PORT>/"
     # apt repo branch
-    APT_REPO_BRANCH=${DISTRO_VERSION}
-    
+    APT_REPO_BRANCH=${MDD_DISTRO_VERSION}
+
     APT_REPO_SECTIONS="main"
 
     # Skip package upgrade if different of 0.
     APT_SKIP_UPGRADE=0
-    
+
     # Display variables
     COLUMNS=$(tput cols)
     DEFAULT_COLOR=$(tput sgr0)
     GREEN=$(tput setaf 2)
     RED=$(tput setaf 1)
     ORANGE=$(tput setaf 3)
-    
+
     # Syslog configuration
     SYSLOG_LABEL="make_distro"
     SYSLOG_SERVICE="user"
 
     # Default profile directory
-    export PROFILE_DIR=/usr/share/make-deb-distro/scripts/profiles/default
-    DEFAULT_SCRIPT_ROOTFS=${PROFILE_DIR}/rootfs.sh
-    DEFAULT_SCRIPT_PREPARE=${PROFILE_DIR}/prepare.sh
-    DEFAULT_SCRIPT_BURN=${PROFILE_DIR}/burn.sh
-    SCRIPT_ROOTFS=$DEFAULT_SCRIPT_ROOTFS
-    SCRIPT_PREPARE=$DEFAULT_SCRIPT_PREPARE
-    SCRIPT_BURN=$DEFAULT_SCRIPT_BURN
+    export MDD_PROFILE_DIR=/usr/share/make-deb-distro/scripts/profiles/default
+    DEFAULT_MDD_SCRIPT_ROOTFS=${MDD_PROFILE_DIR}/rootfs.sh
+    DEFAULT_MDD_SCRIPT_PREPARE=${MDD_PROFILE_DIR}/prepare.sh
+    DEFAULT_MDD_SCRIPT_BURN=${MDD_PROFILE_DIR}/burn.sh
+    MDD_SCRIPT_ROOTFS=$DEFAULT_MDD_SCRIPT_ROOTFS
+    MDD_SCRIPT_PREPARE=$DEFAULT_MDD_SCRIPT_PREPARE
+    MDD_SCRIPT_BURN=$DEFAULT_MDD_SCRIPT_BURN
 }
 
 # Init all scripts internal commands
@@ -95,7 +98,7 @@ init_commands()
     export DEBIAN_FRONTEND=noninteractive
     export DEBCONF_NONINTERACTIVE_SEEN=true
     export LC_ALL=C
-    export CHROOT="chroot ${TARGET_DIR}"
+    export MDD_CHROOT="chroot ${MDD_TARGET_DIR}"
 }
 
 trap_exit()
@@ -114,7 +117,7 @@ trap_int()
 
 create_rootfs()
 {
-    if [ ! -d ${TARGET_DIR} ]; then
+    if [ ! -d ${MDD_TARGET_DIR} ]; then
         print_noln "Create Rootfs ( may take a while... let's have a coffee ;) )"
         # Build minimal rootfs
         logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Build minimal rootfs"
@@ -124,10 +127,10 @@ create_rootfs()
         logger -t "${SYSLOG_LABEL} WARNING" -p ${SYSLOG_SERVICE}.warning -s "Target directory already exists but missing stamp file"
     fi
 
-    if [ "" != "${DEBOOTSTRAP_VARIANT}" ]; then
-        debootstrap_opt="--variant ${DEBOOTSTRAP_VARIANT}"
+    if [ "" != "${MDD_DEBOOTSTRAP_VARIANT}" ]; then
+        debootstrap_opt="--variant ${MDD_DEBOOTSTRAP_VARIANT}"
     fi
-    qemu-debootstrap --arch ${ARCH} ${debootstrap_opt} ${DISTRO_VERSION} ${TARGET_DIR}
+    qemu-debootstrap --arch ${MDD_ARCH} ${debootstrap_opt} ${MDD_DISTRO_VERSION} ${MDD_TARGET_DIR}
     check_result $? "Debootstrap failed. Check architecture, distribution version, debootstrap variant and target directory."
 
     print_ok
@@ -137,39 +140,39 @@ prepare_rootfs()
 {
     print_noln "Prepare rootfs"
 
-    ls ${TARGET_DIR} >/dev/null 2>/dev/null
-    check_result $? "Rootfs ${TARGET_DIR} does not exist. Have you perform 'install' action ?"
+    ls ${MDD_TARGET_DIR} >/dev/null 2>/dev/null
+    check_result $? "Rootfs ${MDD_TARGET_DIR} does not exist. Have you perform 'install' action ?"
 
     # Change policy to not start daemons
     echo "#!/bin/sh
-exit 101" > ${TARGET_DIR}/usr/sbin/policy-rc.d
+exit 101" > ${MDD_TARGET_DIR}/usr/sbin/policy-rc.d
     check_result $?
-    chmod a+x ${TARGET_DIR}/usr/sbin/policy-rc.d
+    chmod a+x ${MDD_TARGET_DIR}/usr/sbin/policy-rc.d
     check_result $?
 
     # Mount proc and sys and pts
     logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Mount /proc"
-    ${CHROOT} mount -t proc   none /proc
+    ${MDD_CHROOT} mount -t proc   none /proc
     check_result $?
 
     logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Mount /sys"
-    ${CHROOT} mount -t sysfs  none /sys
+    ${MDD_CHROOT} mount -t sysfs  none /sys
     check_result $?
 
     logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Mount /dev/pts"
-    ${CHROOT} mount -t devpts none /dev/pts
+    ${MDD_CHROOT} mount -t devpts none /dev/pts
     check_result $?
 
     # Create /etc/mtab
     logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Create /etc/mtab"
-    grep -v rootfs ${TARGET_DIR}/proc/mounts > ${TARGET_DIR}/etc/mtab
+    grep -v rootfs ${MDD_TARGET_DIR}/proc/mounts > ${MDD_TARGET_DIR}/etc/mtab
     check_result $?
 
     # Allow kernel initrd creation
     logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Allow kernel initrd creation"
-    sed '/do_initrd/d' ${TARGET_DIR}/etc/kernel-img.conf > ${TARGET_DIR}/etc/kernel-img.conf
+    sed '/do_initrd/d' ${MDD_TARGET_DIR}/etc/kernel-img.conf > ${MDD_TARGET_DIR}/etc/kernel-img.conf
     check_result $?
-    echo "do_initrd=yes" >> ${TARGET_DIR}/etc/kernel-img.conf
+    echo "do_initrd=yes" >> ${MDD_TARGET_DIR}/etc/kernel-img.conf
     check_result $?
 
     print_ok
@@ -180,15 +183,15 @@ clean_rootfs()
     print_noln "Clean rootfs"
 
     # Clean apt
-    ${CHROOT} apt-get -y clean
+    ${MDD_CHROOT} apt-get -y clean
     check_result $?
 
     # Delete temporary files
-    rm ${TARGET_DIR}/tmp/* -Rf
+    rm ${MDD_TARGET_DIR}/tmp/* -Rf
     check_result $?
 
     # Change policy to allow daemons to start
-    rm -f ${TARGET_DIR}/usr/sbin/policy-rc.d
+    rm -f ${MDD_TARGET_DIR}/usr/sbin/policy-rc.d
     check_result $?
 
     print_ok
@@ -199,20 +202,20 @@ apt_dpkg_init()
     print_noln "Initialize APT package manager"
 
     # Generate /etc/apt/sources.list
-    rm -f ${TARGET_DIR}/etc/apt/sources.list
-    echo "deb $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS
-deb $APT_MIRROR ${DISTRO_VERSION}-backports $APT_REPO_SECTIONS
-deb $APT_MIRROR ${DISTRO_VERSION}-updates $APT_REPO_SECTIONS
-deb $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS
+    rm -f ${MDD_TARGET_DIR}/etc/apt/sources.list
+    echo "deb $APT_MIRROR $MDD_DISTRO_VERSION $APT_REPO_SECTIONS
+deb $APT_MIRROR ${MDD_DISTRO_VERSION}-backports $APT_REPO_SECTIONS
+deb $APT_MIRROR ${MDD_DISTRO_VERSION}-updates $APT_REPO_SECTIONS
+deb $APT_MIRROR ${MDD_DISTRO_VERSION}-security $APT_REPO_SECTIONS
 
-deb-src $APT_MIRROR $DISTRO_VERSION $APT_REPO_SECTIONS
-deb-src $APT_MIRROR ${DISTRO_VERSION}-backports $APT_REPO_SECTIONS
-deb-src $APT_MIRROR ${DISTRO_VERSION}-updates $APT_REPO_SECTIONS
-deb-src  $APT_MIRROR ${DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${TARGET_DIR}/etc/apt/sources.list
+deb-src $APT_MIRROR $MDD_DISTRO_VERSION $APT_REPO_SECTIONS
+deb-src $APT_MIRROR ${MDD_DISTRO_VERSION}-backports $APT_REPO_SECTIONS
+deb-src $APT_MIRROR ${MDD_DISTRO_VERSION}-updates $APT_REPO_SECTIONS
+deb-src  $APT_MIRROR ${MDD_DISTRO_VERSION}-security $APT_REPO_SECTIONS" > ${MDD_TARGET_DIR}/etc/apt/sources.list
     check_result $?
 
     # Update package list
-    ${CHROOT} apt-get update
+    ${MDD_CHROOT} apt-get update
     check_result $?
 
     print_ok
@@ -223,75 +226,75 @@ apt_dpkg_work()
     print_noln "Install packages ( may take a while... let's have an other coffee ^^)"
 
     # Set apt proxy
-    if [ "" != "${APT_HTTP_PROXY}" ]; then
+    if [ "" != "${MDD_APT_HTTP_PROXY}" ]; then
     logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Set apt proxy"
-        echo "Acquire::http::proxy \"${APT_HTTP_PROXY}\";" >> ${TARGET_DIR}/etc/apt/apt.conf.d/proxy
+        echo "Acquire::http::proxy \"${MDD_APT_HTTP_PROXY}\";" >> ${MDD_TARGET_DIR}/etc/apt/apt.conf.d/proxy
         check_result $?
     fi
 
     # Repair potentially broken packages
-    ${CHROOT} dpkg --configure -a
+    ${MDD_CHROOT} dpkg --configure -a
     check_result $?
 
     # Update package list
     if [ "${APT_SKIP_UPGRADE}" = "0" ]; then
-        ${CHROOT} apt-get update
+        ${MDD_CHROOT} apt-get update
         check_result $?
     fi
 
     # Install packages from .deb
-    if [ "" != "${PACKAGES_DEB}" ]; then
+    if [ "" != "${MDD_PACKAGES_DEB}" ]; then
         logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Install other debian packages"
         # Clean previous .deb packages
-        rm ${TARGET_DIR}/*.deb -f
+        rm ${MDD_TARGET_DIR}/*.deb -f
         check_result $?
-        cp ${PACKAGES_DEB} ${TARGET_DIR}/
+        cp ${MDD_PACKAGES_DEB} ${MDD_TARGET_DIR}/
         check_result $?
-        for package in ${PACKAGES_DEB}; do
+        for package in ${MDD_PACKAGES_DEB}; do
             # Dependencies could be missing so do not check dpkg return but check apt result
-            ${CHROOT} dpkg -i /$(basename $package)
-            ${CHROOT} apt-get install -y -f
+            ${MDD_CHROOT} dpkg -i /$(basename $package)
+            ${MDD_CHROOT} apt-get install -y -f
             check_result $?
             # If all is ok, remove .deb package
-            rm ${TARGET_DIR}/$(basename $package) -f
+            rm ${MDD_TARGET_DIR}/$(basename $package) -f
         done
         check_result $?
     fi
 
     # Upgrade already installed packages
     if [ "${APT_SKIP_UPGRADE}" = "0" ]; then
-        ${CHROOT} apt-get upgrade -y
+        ${MDD_CHROOT} apt-get upgrade -y
         check_result $?
     fi
 
     # Install packages from repository. Will install only missing packages.
     must_install=0
-    for package in ${PACKAGES}; do
+    for package in ${MDD_PACKAGES}; do
         dpkg --list "${package}" | grep -q "^ii"
         if [ "$?" != "0" ]; then
             must_install=1
         fi
     done
-    if [ "" != "${PACKAGES}" ] && [ "${must_install}" = "1"  ]; then
-        ${CHROOT} apt-get install ${PACKAGES} -y -f
+    if [ "" != "${MDD_PACKAGES}" ] && [ "${must_install}" = "1"  ]; then
+        ${MDD_CHROOT} apt-get install ${MDD_PACKAGES} -y -f
         check_result $?
     fi
 
     # Remove unwanted packages.
-    if [ "" != "${PACKAGES_EXCLUDED}" ]; then
-        ${CHROOT} apt-get purge ${PACKAGES_EXCLUDED} -y
+    if [ "" != "${MDD_PACKAGES_EXCLUDED}" ]; then
+        ${MDD_CHROOT} apt-get purge ${MDD_PACKAGES_EXCLUDED} -y
         check_result $?
     fi
 
     # Autoremove unused packages
     if [ "${APT_SKIP_UPGRADE}" = "0" ]; then
-        ${CHROOT} apt-get autoremove --purge -y
+        ${MDD_CHROOT} apt-get autoremove --purge -y
     fi
 
     # Update all initrd in /boot
-    ls -1 ${TARGET_DIR}/boot/vmlinuz* >/dev/null 2>/dev/null
+    ls -1 ${MDD_TARGET_DIR}/boot/vmlinuz* >/dev/null 2>/dev/null
     if [ $? -eq 0 ]; then
-        ${CHROOT} update-initramfs -c -k all
+        ${MDD_CHROOT} update-initramfs -c -k all
         check_result $?
     fi
 
@@ -304,11 +307,11 @@ umount_all_in_rootfs()
 
     sync
 
-    umount -f ${TARGET_DIR}/dev/pts
-    umount -f ${TARGET_DIR}/proc
-    umount -f ${TARGET_DIR}/sys
+    umount -f ${MDD_TARGET_DIR}/dev/pts
+    umount -f ${MDD_TARGET_DIR}/proc
+    umount -f ${MDD_TARGET_DIR}/sys
 
-    echo "" > ${TARGET_DIR}/etc/mtab
+    echo "" > ${MDD_TARGET_DIR}/etc/mtab
 
     print_ok
 }
@@ -320,8 +323,8 @@ do_chroot()
 
     # Change root
     reset_output
-    ${CHROOT}
-    check_result $? "${TARGET_DIR} not found. Have you perform an install before chroot ?"
+    ${MDD_CHROOT}
+    check_result $? "${MDD_TARGET_DIR} not found. Have you perform an install before chroot ?"
     init_output
 
     # Clean chroot environment
@@ -331,16 +334,16 @@ do_chroot()
 generate_distro()
 {
     # Create rootfs
-    if [ ! -f ${TARGET_DIR}/.stamp_rootfs ]; then
+    if [ ! -f ${MDD_TARGET_DIR}/.stamp_rootfs ]; then
         create_rootfs
         apt_dpkg_init
-        echo ${DISTRO_NAME}_${DISTRO_VERSION}_${ARCH} > ${TARGET_DIR}/.stamp_rootfs
+        echo ${MDD_DISTRO_NAME}_${MDD_DISTRO_VERSION}_${MDD_ARCH} > ${MDD_TARGET_DIR}/.stamp_rootfs
     else
         print_noln "Rootfs already exist, creation skipped"
         print_warn
 
         print_noln "Checking rootfs"
-        grep -q ${DISTRO_NAME}_${DISTRO_VERSION}_${ARCH} ${TARGET_DIR}/.stamp_rootfs
+        grep -q ${MDD_DISTRO_NAME}_${MDD_DISTRO_VERSION}_${MDD_ARCH} ${MDD_TARGET_DIR}/.stamp_rootfs
         check_result $? "Rootfs already exists but distro name, version or arch are different"
         print_ok
     fi
@@ -352,9 +355,9 @@ generate_distro()
     apt_dpkg_work
 
     # Execute script after rootfs is created
-    if [ "${SCRIPT_ROOTFS}" != "" ]; then
-        print_noln "Execute '${SCRIPT_ROOTFS}' script"
-        sh ${SCRIPT_ROOTFS}
+    if [ "${MDD_SCRIPT_ROOTFS}" != "" ]; then
+        print_noln "Execute '${MDD_SCRIPT_ROOTFS}' script"
+        sh ${MDD_SCRIPT_ROOTFS}
         check_result $?
         print_ok
     fi
@@ -362,21 +365,21 @@ generate_distro()
     # Clean chroot environment
     clean_rootfs
  
-    if [ "${ONLY_ROOTFS}" = "0" ]; then
+    if [ "${MDD_ONLY_ROOTFS}" = "0" ]; then
         # Umount all
         umount_all_in_rootfs
         # As all is already unmounted, no need to umount on exit
         trap - EXIT
 
         # Execute script to prepare target
-        print_noln "Execute '${SCRIPT_PREPARE}' script"
-        bash ${SCRIPT_PREPARE}
+        print_noln "Execute '${MDD_SCRIPT_PREPARE}' script"
+        bash ${MDD_SCRIPT_PREPARE}
         check_result $?
         print_ok
 
         # Burn target
-        print_noln "Execute '${SCRIPT_BURN}' script"
-        bash ${SCRIPT_BURN}
+        print_noln "Execute '${MDD_SCRIPT_BURN}' script"
+        bash ${MDD_SCRIPT_BURN}
         check_result $?
         print_ok
     fi
@@ -384,13 +387,13 @@ generate_distro()
 
 uninstall()
 {
-    if [[ -d ${TARGET_DIR} ]]; then
+    if [[ -d ${MDD_TARGET_DIR} ]]; then
         # Umount all
         umount_all_in_rootfs
     
         # Delete all
-        print_noln "Delete ${TARGET_DIR}"
-        rm ${TARGET_DIR} -Rf
+        print_noln "Delete ${MDD_TARGET_DIR}"
+        rm ${MDD_TARGET_DIR} -Rf
         check_result $?
         print_ok
     fi
@@ -418,9 +421,9 @@ Options:
         (-p|--packages)          \"<packages>\"            Distro packages to use. List must be quoted.
         (--script-rootfs)        <script>                Launch your script after rootfs is created and all package installed.
         (--script-prepare)       <script>                Launch your script to prepare the target device.
-                                                         (${DEFAULT_SCRIPT_PREPARE} by default)
+                                                         (${DEFAULT_MDD_SCRIPT_PREPARE} by default)
         (--script-burn)          <script>                Launch your script to burn rootfs on target device.
-                                                         (${DEFAULT_SCRIPT_BURN} by default)
+                                                         (${DEFAULT_MDD_SCRIPT_BURN} by default)
         (-s|--skip-upgrade)                              Skip package upgrade and autoremoval of unused packages
         (-t|--target)            <target>                Target achitecture (same as host by default).
         (--variant)              <variant>               Debootstrap variant (see debootstrap man page)
@@ -447,7 +450,7 @@ parse_options()
                 ;;
 
             -b|--target-device)
-                TARGET_DEVICE="$2"
+                MDD_TARGET_DEVICE="$2"
                 shift 2
                 ;;
 
@@ -457,8 +460,8 @@ parse_options()
                 ;;
 
             -d|--target-dir)
-                TARGET_DIR="$2"
-                if [ "?" = "${TARGET_DIR}" ] || [ ":" = "${TARGET_DIR}" ] || [ "" = "${TARGET_DIR}" ]; then
+                MDD_TARGET_DIR="$2"
+                if [ "?" = "${MDD_TARGET_DIR}" ] || [ ":" = "${MDD_TARGET_DIR}" ] || [ "" = "${MDD_TARGET_DIR}" ]; then
                     echo "Wrong destination directory. Exiting."
                     exit 1
                 fi
@@ -466,13 +469,13 @@ parse_options()
                 ;;
 
             -e|--excluded-packages)
-                PACKAGES_EXCLUDED="$PACKAGES_EXCLUDED $2"
-                echo $PACKAGES_EXCLUDED
+                MDD_PACKAGES_EXCLUDED="$MDD_PACKAGES_EXCLUDED $2"
+                echo $MDD_PACKAGES_EXCLUDED
                 shift 2
                 ;;
 
             -f|--only-rootfs)
-                ONLY_ROOTFS=1
+                MDD_ONLY_ROOTFS=1
                 shift
                 ;;
 
@@ -483,39 +486,39 @@ parse_options()
                 ;;
 
             -n|--distro-name)
-                DISTRO_NAME=$2
+                MDD_DISTRO_NAME=$2
                 shift 2
                 ;;
 
             -N|--distro-version)
-                DISTRO_VERSION=$2
+                MDD_DISTRO_VERSION=$2
                 shift 2
                 ;;
 
             -o|--deb-packages)
-                PACKAGES_DEB="$PACKAGES_DEB $2"
-                echo $PACKAGES_DEB
+                MDD_PACKAGES_DEB="$MDD_PACKAGES_DEB $2"
+                echo $MDD_PACKAGES_DEB
                 shift 2
                 ;;
 
             -p|--packages)
-                PACKAGES="$PACKAGES $2"
-                echo $PACKAGES
+                MDD_PACKAGES="$MDD_PACKAGES $2"
+                echo $MDD_PACKAGES
                 shift 2
                 ;;
 
             --script-rootfs)
-                SCRIPT_ROOTFS=$2
+                MDD_SCRIPT_ROOTFS=$2
                 shift 2
                 ;;
 
             --script-prepare)
-                SCRIPT_PREPARE=$2
+                MDD_SCRIPT_PREPARE=$2
                 shift 2
                 ;;
 
             --script-burn)
-                SCRIPT_BURN=$2
+                MDD_SCRIPT_BURN=$2
                 shift 2
                 ;;
 
@@ -525,17 +528,17 @@ parse_options()
                 ;;
 
             -t|--target)
-                ARCH=$2
+                MDD_ARCH=$2
                 shift 2
                 ;;
 
             --variant)
-                DEBOOTSTRAP_VARIANT=$2
+                MDD_DEBOOTSTRAP_VARIANT=$2
                 shift 2
                 ;;
 
             -v|--verbose)
-                VERBOSE=1
+                MDD_VERBOSE=1
                 shift
                 ;;
 
@@ -563,16 +566,16 @@ init
 parse_options "${@}"
 
 # Set paths to absolute
-TARGET_DIR=$(realpath $(dirname $TARGET_DIR))/$(basename $TARGET_DIR)
-PROFILE_DIR=$(realpath $PROFILE_DIR)
+MDD_TARGET_DIR=$(realpath $(dirname $MDD_TARGET_DIR))/$(basename $MDD_TARGET_DIR)
+MDD_PROFILE_DIR=$(realpath $MDD_PROFILE_DIR)
 
 # Init internal commands
 init_commands
 
 # Determines apt repository according to distro
-case ${DISTRO_NAME} in
+case ${MDD_DISTRO_NAME} in
     "ubuntu")
-        case ${ARCH} in
+        case ${MDD_ARCH} in
             amd64|i386)
               APT_MIRROR="http://archive.ubuntu.com/ubuntu"
               ;;
@@ -604,18 +607,18 @@ elif [ "install" = "${action}" ]; then
     trap    trap_exit        EXIT
 
     # Check target device
-    if [ "${ONLY_ROOTFS}" = "0" ] && ( [ -z ${TARGET_DEVICE} ] || [ ! -b ${TARGET_DEVICE} ] ); then
+    if [ "${MDD_ONLY_ROOTFS}" = "0" ] && ( [ -z ${MDD_TARGET_DEVICE} ] || [ ! -b ${MDD_TARGET_DEVICE} ] ); then
         check_result 1 "Error : Target device does not exist or not set..."
         exit 2
     fi
     
     # Select partition
-    if [ "$(echo ${TARGET_DEVICE} | grep '.*[0-9]$')" != "" ]; then
-        export VFAT_DEVICE=${TARGET_DEVICE}p1
-        export ROOTFS_DEVICE=${TARGET_DEVICE}p2
+    if [ "$(echo ${MDD_TARGET_DEVICE} | grep '.*[0-9]$')" != "" ]; then
+        export MDD_VFAT_DEVICE=${MDD_TARGET_DEVICE}p1
+        export MDD_ROOTFS_DEVICE=${MDD_TARGET_DEVICE}p2
     else
-        export VFAT_DEVICE=${TARGET_DEVICE}1
-        export ROOTFS_DEVICE=${TARGET_DEVICE}2
+        export MDD_VFAT_DEVICE=${MDD_TARGET_DEVICE}1
+        export MDD_ROOTFS_DEVICE=${MDD_TARGET_DEVICE}2
     fi
 
     generate_distro
