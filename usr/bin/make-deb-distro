@@ -227,9 +227,10 @@ apt_dpkg_work()
     print_noln "Install packages ( may take a while... let's have an other coffee ^^)"
 
     # Set apt proxy
+    rm -f ${MDD_TARGET_DIR}/etc/apt/apt.conf.d/proxy
     if [ "" != "${MDD_APT_HTTP_PROXY}" ]; then
     logger -t "${SYSLOG_LABEL} INFO" -p ${SYSLOG_SERVICE}.info "Set apt proxy"
-        echo "Acquire::http::proxy \"${MDD_APT_HTTP_PROXY}\";" >> ${MDD_TARGET_DIR}/etc/apt/apt.conf.d/proxy
+        echo "Acquire::http::proxy \"${MDD_APT_HTTP_PROXY}\";" > ${MDD_TARGET_DIR}/etc/apt/apt.conf.d/proxy
         check_result $?
     fi
 
