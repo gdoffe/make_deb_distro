@@ -642,9 +642,11 @@ elif [ "install" = "${action}" ]; then
     if [ "$(echo ${MDD_TARGET_DEVICE} | grep '.*[0-9]$')" != "" ]; then
         export MDD_VFAT_DEVICE=${MDD_TARGET_DEVICE}p1
         export MDD_ROOTFS_DEVICE=${MDD_TARGET_DEVICE}p2
+        export MDD_PARTITION_PREFIX=${MDD_TARGET_DEVICE}p
     else
         export MDD_VFAT_DEVICE=${MDD_TARGET_DEVICE}1
         export MDD_ROOTFS_DEVICE=${MDD_TARGET_DEVICE}2
+        export MDD_PARTITION_PREFIX=${MDD_TARGET_DEVICE}
     fi
 
     generate_distro
