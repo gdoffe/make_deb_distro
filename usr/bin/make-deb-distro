@@ -85,15 +85,6 @@ init()
     # Syslog configuration
     SYSLOG_LABEL="make_distro"
     SYSLOG_SERVICE="user"
-
-    # Default profile directory
-    export MDD_PROFILE_DIR=/usr/share/make-deb-distro/scripts/profiles/default
-    DEFAULT_MDD_SCRIPT_ROOTFS=${MDD_PROFILE_DIR}/rootfs.sh
-    DEFAULT_MDD_SCRIPT_PREPARE=${MDD_PROFILE_DIR}/prepare.sh
-    DEFAULT_MDD_SCRIPT_BURN=${MDD_PROFILE_DIR}/burn.sh
-    MDD_SCRIPT_ROOTFS=$DEFAULT_MDD_SCRIPT_ROOTFS
-    MDD_SCRIPT_PREPARE=$DEFAULT_MDD_SCRIPT_PREPARE
-    MDD_SCRIPT_BURN=$DEFAULT_MDD_SCRIPT_BURN
 }
 
 # Init all scripts internal commands
@@ -367,7 +358,7 @@ generate_distro()
     apt_dpkg_work
 
     # Execute script after rootfs is created
-    if [ "${MDD_SCRIPT_ROOTFS}" != "" ]; then
+    if [ ! -z "${MDD_SCRIPT_ROOTFS}" ]; then
         print_noln "Execute '${MDD_SCRIPT_ROOTFS}' script"
         sh ${MDD_SCRIPT_ROOTFS}
         check_result $?
@@ -384,16 +375,20 @@ generate_distro()
         trap - EXIT
 
         # Execute script to prepare target
-        print_noln "Execute '${MDD_SCRIPT_PREPARE}' script"
-        bash ${MDD_SCRIPT_PREPARE}
-        check_result $?
-        print_ok
+        if [ ! -z "${MDD_SCRIPT_PREPARE}" ]; then
+            print_noln "Execute '${MDD_SCRIPT_PREPARE}' script"
+            bash ${MDD_SCRIPT_PREPARE}
+            check_result $?
+            print_ok
+        fi
 
         # Burn target
-        print_noln "Execute '${MDD_SCRIPT_BURN}' script"
-        bash ${MDD_SCRIPT_BURN}
-        check_result $?
-        print_ok
+        if [ ! -z "${MDD_SCRIPT_BURN}" ]; then
+            print_noln "Execute '${MDD_SCRIPT_BURN}' script"
+            bash ${MDD_SCRIPT_BURN}
+            check_result $?
+            print_ok
+        fi
     fi
 }
 
@@ -593,7 +588,6 @@ parse_options "${@}"
 
 # Set paths to absolute
 MDD_TARGET_DIR=$(realpath $(dirname $MDD_TARGET_DIR))/$(basename $MDD_TARGET_DIR)
-MDD_PROFILE_DIR=$(realpath $MDD_PROFILE_DIR)
 
 # Init internal commands
 init_commands
