@@ -24,11 +24,50 @@ MAN_SECTION=1
 
 DIRS_FILES_TO_IGNORE="changelog packaging _BUILD .svn .git README*"
 
+parse_options()
+{
+    if [ ! -z "$@" ]; then
+        ARGS=$(getopt -o "" -l "dirty" -n "makedeb" -- "$@")
+
+        #Bad arguments
+        if [ $? -ne 0 ]; then
+            exit 1
+        fi
+
+        eval set -- "${ARGS}"
+
+        while true; do
+            case "$1" in
+                --dirty)
+                    dirty=1
+                    shift 1
+                    ;;
+
+                -|--)
+                    shift
+                    break
+                    ;;
+
+                *)
+                    exit 1
+                    shift
+                    break
+                    ;;
+            esac
+        done
+    fi
+}
+
 # Check we are root
 #if [ $(id -u) != "0" ]; then
 #    echo "Error: Must be root to launch this script." > /dev/stderr
 #    exit 1
 #fi
+
+dirty=0
+
+# Parse options
+parse_options "${@}"
 
 # Delete all deb files
 rm -f *.deb
@@ -68,7 +107,7 @@ chmod +x ${PKGDIR}/debian/rules
 echo "Source: ${PACKAGE_NAME}
 Section: ${PACKAGE_SECTION}
 Build-Depends: ${PACKAGE_DEPENDENCIES}, debhelper(>=9)
-Standards-Version: 3.9.5
+Standards-Version: 3.9.7
 Maintainer: ${PACKAGE_MAINTAINER}
 
 Package: ${PACKAGE_NAME}
@@ -79,19 +118,36 @@ Description: ${PACKAGE_DESCRIPTION}
  ${PACKAGE_EXTENDED_DESC}
 Depends: ${PACKAGE_DEPENDENCIES}, \${misc:Depends}" > ${PKGDIR}/debian/control
 
-if [ ! -f ${SRCDIR}/packaging/debian/changelog ]; then
-    DEBEMAIL="${PACKAGE_MAINTAINER}" dch --create --distribution ${PACKAGE_DISTRIBUTION} --package ${PACKAGE_NAME} --newversion ${FIRST_RELEASE} Initial Release
-    DEBEMAIL="${PACKAGE_MAINTAINER}" dch -e
-else
-    cp  ${SRCDIR}/packaging/debian/changelog ${PKGDIR}/debian/changelog -vf
-    (cd ${PKGDIR}/ && DEBEMAIL="${PACKAGE_MAINTAINER}" dch --distribution ${PACKAGE_DISTRIBUTION} --package ${PACKAGE_NAME} -i)
+cp ${SRCDIR}/packaging/debian ${PKGDIR}/ -Rf
+
+# Manage changelog if not in dirty mode
+if [ "${dirty}" == "0" ]; then
+    # Update changelog
+    if [ ! -f ${SRCDIR}/packaging/debian/changelog ]; then
+        (cd ${PKGDIR}/ && DEBEMAIL="${PACKAGE_MAINTAINER}" dch --create --distribution ${PACKAGE_DISTRIBUTION} --package ${PACKAGE_NAME} --newversion ${FIRST_RELEASE} Initial Release)
+        (cd ${PKGDIR}/ && DEBEMAIL="${PACKAGE_MAINTAINER}" dch -e)
+    else
+        cp  ${SRCDIR}/packaging/debian/changelog ${PKGDIR}/debian/changelog -vf
+        (cd ${PKGDIR}/ && DEBEMAIL="${PACKAGE_MAINTAINER}" dch --distribution ${PACKAGE_DISTRIBUTION} --package ${PACKAGE_NAME} -i)
+    fi
+
+    # Update changelog into source tree if validated by debchange
     if [ "$?" == "0" ]; then
         cp ${PKGDIR}/debian/changelog ${SRCDIR}/packaging/debian/changelog -vf
     fi
+else
+    # Create a changelog if none for dirty mode
+    if [ ! -f ${SRCDIR}/packaging/debian/changelog ]; then
+        (cd ${PKGDIR}/ && DEBEMAIL="${PACKAGE_MAINTAINER}" dch --create --distribution ${PACKAGE_DISTRIBUTION} --package ${PACKAGE_NAME} --newversion "${FIRST_RELEASE}~dirty" "Test version")
+    fi
 fi
 
-
-cp ${SRCDIR}/packaging/debian ${PKGDIR}/ -Rf
+# If changelog is not updated then build a dirty version
+(cd ${SRCDIR}/ && git diff --exit-code packaging/debian/changelog)
+if [ "$?" == "0" ]; then
+    last_version=$(head -1 ${PKGDIR}/debian/changelog | cut -d';' -f1 | cut -d'(' -f2 | cut -d')' -f1 | egrep -o "^[0-9]+\.[0-9]+")
+    (cd ${PKGDIR}/ && DEBEMAIL="${PACKAGE_MAINTAINER}" dch --distribution ${PACKAGE_DISTRIBUTION} -v "$(echo "${last_version}  0.1" | awk '{printf "%.1f", $1 + $2}')~dirty" "Test version")
+fi
 
 rm -f ${PKGDIR}/debian/${PACKAGE_NAME}.manpages
 rm -f ${PKGDIR}/debian/${PACKAGE_NAME}.${MAN_SECTION}
@@ -99,6 +155,7 @@ echo "[authors]
 .B ${PACKAGE_NAME}
 was written by ${PACKAGE_MAINTAINER}." > ${BLDDIR}/authors.maninc
 
+# Generate man pages
 for file in $(ls -d ${PKGDIR}/usr/bin/*); do
     version=$(head -1 ${PKGDIR}/debian/changelog | cut -d';' -f1)
     help2man --no-info --version-string="${version}" --section=${MAN_SECTION} --include=${BLDDIR}/authors.maninc \
