@@ -60,6 +60,9 @@ init()
     # Partition label
     MDD_ROOTFS_PARTITION_LABEL=${RANDOM}
 
+    # Hostname
+    MDD_HOSTNAME="make-deb-distro"
+
     # Apt options
     #APT_INSTALL_OPTIONS="--no-install-recommends"
     # HTTP proxy for apt
@@ -175,6 +178,13 @@ exit 101" > ${MDD_TARGET_DIR}/usr/sbin/policy-rc.d
     check_result $?
     echo "do_initrd=yes" >> ${MDD_TARGET_DIR}/etc/kernel-img.conf
     check_result $?
+
+    # Set hostname
+    echo "${MDD_HOSTNAME}" > ${MDD_TARGET_DIR}/etc/hostname
+    check_result $?
+    sed -i '/^127.0.1.1*/d' ${MDD_TARGET_DIR}/etc/hosts
+    check_result $?
+    echo "127.0.1.1    ${MDD_HOSTNAME}"
 
     print_ok
 }
