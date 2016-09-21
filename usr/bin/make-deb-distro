@@ -273,7 +273,7 @@ apt_dpkg_work()
     # Install packages from repository. Will install only missing packages.
     must_install=0
     for package in ${MDD_PACKAGES}; do
-        dpkg --list "${package}" | grep -q "^ii"
+        ${MDD_CHROOT} dpkg --list "${package}" | grep -q "^ii"
         if [ "$?" != "0" ]; then
             must_install=1
         fi
