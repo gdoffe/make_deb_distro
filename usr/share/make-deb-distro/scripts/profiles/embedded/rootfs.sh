@@ -16,7 +16,7 @@ check_result $?
 
 # Uboot bootloader
 if [ ! -z "${EMB_UBOOT_CONFIG}" ]; then
-    if [ "$(git --git-dir ${EMB_UBOOT_PATH}/.git remote -v | tail -1 | grep ${EMB_UBOOT_NAME})" = "" ]; then
+    if [ "$(git --git-dir ${EMB_UBOOT_PATH}/.git remote -v | egrep "origin\s+.*${EMB_UBOOT_NAME}.*")" = "" ]; then
         rm -Rf ${EMB_UBOOT_PATH}
         git clone ${EMB_UBOOT_GIT} ${EMB_UBOOT_PATH}
         (cd ${EMB_UBOOT_PATH} && git checkout ${EMB_UBOOT_TAG} -b ${EMB_UBOOT_LOCAL_BRANCH})
@@ -44,7 +44,7 @@ check_result $?
 
 # Linux kernel
 if [ ! -z "${EMB_KERNEL_CONFIG}" ]; then
-    if [ "$(git --git-dir ${EMB_KERNEL_PATH}/.git remote -v | tail -1 | grep ${EMB_KERNEL_NAME})" = "" ]; then
+    if [ "$(git --git-dir ${EMB_KERNEL_PATH}/.git remote -v | egrep "origin\s+.*${EMB_KERNEL_NAME}.*")" = "" ]; then
         rm -Rf ${EMB_KERNEL_PATH}
         git clone ${EMB_KERNEL_GIT} ${EMB_KERNEL_PATH}
         check_result $?
