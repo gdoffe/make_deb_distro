@@ -21,7 +21,7 @@ mount ${MDD_VFAT_DEVICE} ${boot_mount_point}
 check_result $?
 
 # Copy device tree from linux kernel on bootloader partition
-dtb_kernel_file=$(echo $EMB_KERNEL_TARGET | egrep -o "([[:alnum:]]|-)+\.dtb")
+dtb_kernel_file=$(echo $EMB_KERNEL_TARGET | egrep -o "([[:alnum:]]|-|_)+\.dtb")
 if [ ! -z "${dtb_kernel_file}" ]; then
     cp -f $EMB_KERNEL_PATH/arch/${ARCH}/boot/dts/${dtb_kernel_file} ${boot_mount_point}/
     check_result $?
