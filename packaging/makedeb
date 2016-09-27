@@ -107,7 +107,7 @@ chmod +x ${PKGDIR}/debian/rules
 echo "Source: ${PACKAGE_NAME}
 Section: ${PACKAGE_SECTION}
 Build-Depends: ${PACKAGE_DEPENDENCIES}, debhelper(>=9)
-Standards-Version: 3.9.7
+Standards-Version: 3.9.8
 Maintainer: ${PACKAGE_MAINTAINER}
 
 Package: ${PACKAGE_NAME}
