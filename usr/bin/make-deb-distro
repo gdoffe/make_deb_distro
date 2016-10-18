@@ -175,7 +175,7 @@ exit 101" > ${MDD_TARGET_DIR}/usr/sbin/policy-rc.d
     check_result $?
     sed -i '/^127.0.1.1*/d' ${MDD_TARGET_DIR}/etc/hosts
     check_result $?
-    echo "127.0.1.1    ${MDD_HOSTNAME}"
+    echo "127.0.1.1    ${MDD_HOSTNAME}" >> ${MDD_TARGET_DIR}/etc/hosts
 
     print_ok
 }
