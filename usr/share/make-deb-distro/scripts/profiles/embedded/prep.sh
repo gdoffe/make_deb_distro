@@ -18,9 +18,10 @@ check_result $?
 disk_size=$(fdisk -l ${MDD_TARGET_DEVICE} | head -1 | tail -1 | egrep "[0-9]+" -o | tail -1 | head -1)
 disk_start=2048
 
-fat_start=$disk_start
+misc_start=$disk_start
 fat_size=1048576
 
+# Compute extended partitions size
 current_start=$disk_start
 extra_size=2048
 for current in $(printenv | grep MDD_EXTRA_PARTITION_ | cut -d'=' -f1); do
@@ -28,9 +29,17 @@ for current in $(printenv | grep MDD_EXTRA_PARTITION_ | cut -d'=' -f1); do
     extra_size=$(( extra_size + current_size + 2048  ))
 done
 
-extended_size=$(( extra_size + 2048 ))
-linux_size=$(( disk_size - fat_size - extended_size))
+# Optional extra primary partition
+if [ -n "${MDD_EXTRA_PRIMARY_PARTITION}" ]; then
+	misc_size=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f1)
+else
+	misc_size=0
+fi
 
+extended_size=$(( extra_size + 2048 ))
+linux_size=$(( disk_size - fat_size - misc_size - extended_size))
+
+fat_start=$(( misc_start + misc_size ))
 linux_start=$(( fat_start + fat_size ))
 extended_start=$(( linux_start + linux_size ))
 
@@ -39,13 +48,14 @@ extended_start=$(( linux_start + linux_size ))
 #     * FAT32 partition for bootloader
 #     * Linux partition for rootfs
 #     * Extended partition for extra partitions
+misc_type=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f2)
 sfdisk_input="# partition table of ${MDD_TARGET_DEVICE}
 unit: sectors
 
 ${MDD_VFAT_DEVICE} : start= ${fat_start}, size=   ${fat_size}, type=b, bootable
 ${MDD_ROOTFS_DEVICE} : start= ${linux_start}, size= ${linux_size}, type=83
-${MDD_PARTITION_PREFIX}3 : start= ${extended_start}, size= ${extended_size}, type=5
-${MDD_PARTITION_PREFIX}4 : start= 0, size= 0, type=0"
+${MDD_PARTITION_PREFIX}3 : start= ${misc_start}, size= ${misc_size}, type=${misc_type}
+${MDD_PARTITION_PREFIX}4 : start= ${extended_start}, size= ${extended_size}, type=5"
 
 # Add extra partitions
 index=5
@@ -79,6 +89,12 @@ mkfs.vfat -n UBOOT ${MDD_VFAT_DEVICE}
 check_result $?
 mkfs.ext4 -F -L ${RANDOM} ${MDD_ROOTFS_DEVICE}
 check_result $?
+
+# Format extra primary partition if needed
+misc_fs=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f3)
+if [ -n "${misc_fs}" ]; then
+    mkfs -t ${misc_fs} ${MDD_PARTITION_PREFIX}3
+fi
 
 # Format extra partitions
 index=5
