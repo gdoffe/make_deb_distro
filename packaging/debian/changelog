@@ -1,3 +1,16 @@
+make-deb-distro (0.5) unstable; urgency=medium
+
+  * Improve upgrade skipping
+  * Man pages available
+  * Add --version option
+  * Export all variables by default
+  * Correct multiple apt proxy bug
+  * Set target hostname
+  * New embedded profile
+  * Manage extra partitions (primary and extended)
+
+ -- Gilles DOFFE <g.doffe@gmail.com>  Tue, 18 Oct 2016 12:25:26 +0200
+
 make-deb-distro (0.4) experimental; urgency=medium
 
   * Add chroot action to debug rootfs
