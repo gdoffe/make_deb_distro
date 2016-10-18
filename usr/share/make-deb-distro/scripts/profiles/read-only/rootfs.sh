@@ -35,7 +35,7 @@
 ###########################################################################
 
 # Import generic functions.
-. ${INCLUDE_DIR}/functions.sh
+. ${MDD_INCLUDE_DIR}/functions.sh
 
 # Disable apt-cdrom in initramfs since it is not an installation distrib
 if [ "1" = "${READ_ONLY}" ]; then

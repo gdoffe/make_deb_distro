@@ -35,7 +35,7 @@
 ###########################################################################
 
 # Import generic functions.
-. ${INCLUDE_DIR}/functions.sh
+. ${MDD_INCLUDE_DIR}/functions.sh
 
 print_noln "Burn ro image"
 

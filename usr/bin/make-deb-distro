@@ -23,8 +23,8 @@
 # /usr/share/common-licenses/GPL-3.
 
 # Include generic functions
-export INCLUDE_DIR=/usr/share/make-deb-distro/scripts/include
-. ${INCLUDE_DIR}/functions.sh
+export MDD_INCLUDE_DIR=/usr/share/make-deb-distro/scripts/include
+. ${MDD_INCLUDE_DIR}/functions.sh
 MDD_CHANGELOG_FILE=/usr/share/doc/make-deb-distro/changelog.gz
 
 # Init all script variables

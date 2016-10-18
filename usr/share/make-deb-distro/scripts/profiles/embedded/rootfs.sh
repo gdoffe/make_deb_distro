@@ -1,5 +1,5 @@
 #!/bin/sh
-. ${INCLUDE_DIR}/functions.sh
+. ${MDD_INCLUDE_DIR}/functions.sh
 
 pwd=$PWD
 

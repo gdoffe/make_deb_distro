@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ${INCLUDE_DIR}/functions.sh
+. ${MDD_INCLUDE_DIR}/functions.sh
 
 # Umount target if already mounted
 umount ${MDD_TARGET_DEVICE}*

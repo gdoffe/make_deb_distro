@@ -35,7 +35,7 @@
 ###########################################################################
 
 # Import generic functions.
-. ${INCLUDE_DIR}/functions.sh
+. ${MDD_INCLUDE_DIR}/functions.sh
 
 # Loopback
 touch ${TARGET_DIR}_loop
