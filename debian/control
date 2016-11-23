@@ -1,0 +1,13 @@
+Source: make-deb-distro
+Section: utils
+Build-Depends: realpath,whois,qemu-user-static,qemu-system,binfmt-support,squashfs-tools,extlinux,mbr,debootstrap, debhelper(>=9)
+Standards-Version: 3.9.8
+Maintainer: Gilles DOFFE <g.doffe@gmail.com>
+
+Package: make-deb-distro
+Priority: optional
+Section: utils
+Architecture: all
+Description: Make your customized ubuntu/debian.
+ Make your customized ubuntu/debian distribution for any target.
+Depends: realpath,whois,qemu-user-static,qemu-system,binfmt-support,squashfs-tools,extlinux,mbr,debootstrap, ${misc:Depends}
