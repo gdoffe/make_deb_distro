@@ -31,9 +31,9 @@ done
 
 # Optional extra primary partition
 if [ -n "${MDD_EXTRA_PRIMARY_PARTITION}" ]; then
-	misc_size=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f1)
+    misc_size=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f1)
 else
-	misc_size=0
+    misc_size=0
 fi
 
 extended_size=$(( extra_size + 2048 ))
@@ -105,7 +105,7 @@ index=5
 for current in $(printenv | grep MDD_EXTRA_PARTITION_ | cut -d'=' -f1); do
     current_fs=$(eval "echo \${${current}} | cut -d' ' -f3")
     if [ -n ${current_fs} ]; then
-    	mkfs -t ${current_fs} ${MDD_PARTITION_PREFIX}${index}
+        mkfs -t ${current_fs} ${MDD_PARTITION_PREFIX}${index}
     fi
     index=$(( index + 1 ))
 done
