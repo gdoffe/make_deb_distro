@@ -48,7 +48,9 @@ extended_start=$(( linux_start + linux_size ))
 #     * FAT32 partition for bootloader
 #     * Linux partition for rootfs
 #     * Extended partition for extra partitions
-misc_type=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f2)
+if [ -n "${MDD_EXTRA_PRIMARY_PARTITION}" ]; then
+    misc_type=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f2)
+fi
 sfdisk_input="# partition table of ${MDD_TARGET_DEVICE}
 unit: sectors
 
@@ -91,9 +93,11 @@ mkfs.ext4 -F -L ${RANDOM} ${MDD_ROOTFS_DEVICE}
 check_result $?
 
 # Format extra primary partition if needed
-misc_fs=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f3)
-if [ -n "${misc_fs}" ]; then
-    mkfs -t ${misc_fs} ${MDD_PARTITION_PREFIX}3
+if [ -n "${MDD_EXTRA_PRIMARY_PARTITION}" ]; then
+    misc_fs=$(echo ${MDD_EXTRA_PRIMARY_PARTITION} | cut -d' ' -f3)
+    if [ -n "${misc_fs}" ]; then
+        mkfs -t ${misc_fs} ${MDD_PARTITION_PREFIX}3
+    fi
 fi
 
 # Format extra partitions
