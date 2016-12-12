@@ -55,8 +55,12 @@ sfdisk_input="# partition table of ${MDD_TARGET_DEVICE}
 unit: sectors
 
 ${MDD_VFAT_DEVICE} : start= ${fat_start}, size=   ${fat_size}, type=b, bootable
-${MDD_ROOTFS_DEVICE} : start= ${linux_start}, size= ${linux_size}, type=83
-${MDD_PARTITION_PREFIX}3 : start= ${misc_start}, size= ${misc_size}, type=${misc_type}
+${MDD_ROOTFS_DEVICE} : start= ${linux_start}, size= ${linux_size}, type=83"
+if [ -n "${MDD_EXTRA_PRIMARY_PARTITION}" ]; then
+    sfdisk_input="${sfdisk_input}
+${MDD_PARTITION_PREFIX}3 : start= ${misc_start}, size= ${misc_size}, type=${misc_type}"
+fi
+sfdisk_input="${sfdisk_input}
 ${MDD_PARTITION_PREFIX}4 : start= ${extended_start}, size= ${extended_size}, type=5"
 
 # Add extra partitions
